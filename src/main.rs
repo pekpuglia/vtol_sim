@@ -1,5 +1,26 @@
 use egaku2d::glutin::{self, event::VirtualKeyCode, event_loop::ControlFlow};
 
+struct Drawer {
+
+}
+use glutin::event::{Event, WindowEvent};
+fn event_handler(ev: Event<'_, ()>, control_flow: &mut ControlFlow, drawer: Drawer) {
+    match ev {
+        Event::WindowEvent { event: wev, .. } => {
+            match wev {
+                WindowEvent::KeyboardInput { input, ..} => {
+                    if let Some(VirtualKeyCode::Escape) = input.virtual_keycode {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                },
+                _ => {}
+            }
+        },
+        Event::MainEventsCleared => {drawer;},
+        _ => {}
+    }
+}
+
 fn main() {
     let ev_loop = glutin::event_loop::EventLoop::new();
     let mut glsys = egaku2d::WindowedSystem::new(
