@@ -3,7 +3,7 @@ use std::time::Instant;
 use egaku2d::{glutin::{event::{Event, WindowEvent, VirtualKeyCode}, event_loop::{ControlFlow, EventLoop}}, SimpleCanvas};
 
 pub trait Component {
-    fn draw(&self, canvas: &mut SimpleCanvas, dt: f64);
+    fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32);
     fn receive_event(&mut self, ev: &Event<'_, ()>);
 }
 
@@ -29,12 +29,12 @@ impl Drawer {
     fn draw(&mut self)  {
         if self.timer.is_ready() {
             let now = Instant::now();
-            let dt = now.duration_since(self.last_draw).as_secs_f64();
+            let dt = now.duration_since(self.last_draw).as_secs_f32();
             self.last_draw = now;
 
             let canvas = self.system.canvas_mut();
             canvas.clear_color([0.0,0.0,0.0]);
-            self.components.iter().for_each(|c| c.draw(canvas, dt));
+            self.components.iter_mut().for_each(|c| c.draw(canvas, dt));
             self.system.swap_buffers()
         }
     }
