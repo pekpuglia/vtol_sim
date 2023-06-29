@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{self, Instant};
 
 use egaku2d::{glutin::{event::{Event, WindowEvent, VirtualKeyCode}, event_loop::{ControlFlow, EventLoop}}, SimpleCanvas};
 
@@ -20,7 +20,7 @@ impl Drawer {
     pub fn new(fps: u32, width: usize, height: usize, window_name: &str, event_loop: &EventLoop<()>, components: Vec<Box<dyn Component>>) -> Drawer {
         Drawer {
             system: egaku2d::WindowedSystem::new([width, height], event_loop, window_name),
-            timer: egaku2d::RefreshTimer::new(((1 as f64) / (fps as f64)) as usize),
+            timer: egaku2d::RefreshTimer::new(((1000 as f64) / (fps as f64)) as usize),
             components,
             last_draw: Instant::now(),
         }
@@ -31,7 +31,6 @@ impl Drawer {
             let now = Instant::now();
             let dt = now.duration_since(self.last_draw).as_secs_f32();
             self.last_draw = now;
-
             let canvas = self.system.canvas_mut();
             canvas.clear_color([0.0,0.0,0.0]);
             self.components.iter_mut().for_each(|c| c.draw(canvas, dt));

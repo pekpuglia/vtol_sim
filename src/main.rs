@@ -50,7 +50,7 @@ mod test {
     }
 }
 
-#[derive(enum_map::Enum, Debug)]
+#[derive(enum_map::Enum, Debug, Clone, Copy)]
 enum Walls {
     Top,
     Right,
@@ -78,32 +78,43 @@ impl Ball {
                 self.pos = self.current_mouse_pos
                     .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
                     .zip([WID - self.r, HEI - self.r].into(), f32::min);
-                self.vel = 0.2 * (self.current_mouse_pos - self.last_mouse_pos) / dt;
+                self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
                 self.vel -= self.vel * self.damp;
-                
+
+                let mut safe_dt = dt;
+                let mut collision = None;
                 for (key, (p2, d2)) in self.wall_point_and_directions {
                     let collision_dt = intersection_lambda(self.pos, self.vel, p2, d2);
 
                     if let (Walls::Top, Ok(col_dt)) = (key, collision_dt) {
                         dbg!(col_dt, dt);
                     }
-
                     match collision_dt {
                         //collides this frame
                         Ok(col_dt) if col_dt >= 0.0 && col_dt <= dt => {
-                            self.pos += self.vel * col_dt;
-                            self.vel = reflect(d2, self.vel);
-                            self.pos += self.vel * (dt - col_dt);
+                            // self.pos += self.vel * col_dt;
+                            // self.vel = reflect(d2, self.vel);
+                            // self.pos += self.vel * (dt - col_dt);
+                            safe_dt = safe_dt.min(col_dt);
+                            collision = Some(key);
                         },
                         //no collision this frame
                         Ok(_) | Err(_) => {
-                            self.pos += self.vel * dt;
+                            // self.pos += self.vel * dt;
                         },
                     }
                 }
 
+                self.pos += self.vel * safe_dt;
+                match collision {
+                    Some(wall) => {
+                        self.vel = reflect(self.wall_point_and_directions[wall].1, self.vel);
+                        self.pos += self.vel * (dt - safe_dt);
+                    },
+                    None => {},
+                }
 
             },
         }
