@@ -49,37 +49,19 @@ impl Ball {
             false => {
                 self.vel -= self.vel * self.damp;
                 
-                let mut remaining_dt = dt;
+                let collision_dt = intersection_lambda(self.pos, self.vel, [0.0, self.r].into(), [1.0, 0.0].into());
 
-                while remaining_dt > 0.0 {
-                    let (index, dt_collision) = [
-                        intersection_lambda(self.pos, self.vel, [0.0+self.r, 0.0+self.r].into(), [1.0, 0.0].into()),
-                        intersection_lambda(self.pos, self.vel, [0.0+self.r, 0.0+self.r].into(), [0.0, 1.0].into()),
-                        intersection_lambda(self.pos, self.vel, [WID-self.r, HEI-self.r].into(), [1.0, 0.0].into()),
-                        intersection_lambda(self.pos, self.vel, [WID-self.r, HEI-self.r].into(), [1.0, 0.0].into()),
-                    ]
-                        .iter()
-                        .enumerate()
-                        .filter_map(|el| 
-                            el.1.and_then(|val| Ok((el.0, val))).ok())
-                            .reduce(|acc, el|  match acc.1 < el.1 {
-                                true => acc,
-                                false => el,
-                            })
-                            .unzip();
-    
-                    let safe_dt = dt_collision.map_or(remaining_dt, |val| val.min(remaining_dt));
-    
-                    self.pos = self.pos + safe_dt * self.vel;
-                    remaining_dt -= safe_dt;
-    
-                    match index {
-                        Some(1) => {self.vel = reflect([1.0, 0.0].into(), self.vel)},
-                        Some(2) => {self.vel = reflect([0.0, 1.0].into(), self.vel)},
-                        Some(3) => {self.vel = reflect([1.0, 0.0].into(), self.vel)},
-                        Some(_) => {self.vel = reflect([0.0, 1.0].into(), self.vel)},
-                        None => {},
-                    }
+                match collision_dt {
+                    //collides this frame
+                    Ok(col_dt) if col_dt > 0.0 && col_dt < dt => {
+                        self.pos += self.vel * col_dt;
+                        self.vel = reflect([1.0, 0.0].into(), self.vel);
+                        self.pos += self.vel * (dt - col_dt);
+                    },
+                    //no collision this frame
+                    Ok(_) | Err(_) => {
+                        self.pos += self.vel * dt;
+                    },
                 }
 
             },
