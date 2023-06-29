@@ -12,7 +12,8 @@ struct Ball {
     r: f32,
     is_held: bool,
     current_mouse_pos: Vector2<f32>,
-    last_mouse_pos: Vector2<f32>
+    last_mouse_pos: Vector2<f32>,
+    wall_point_and_directions: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
 }
 
 fn reflect(axis: Vector2<f32>, to_reflect: Vector2<f32>) -> Vector2<f32> {
@@ -30,12 +31,45 @@ fn intersection_lambda(pos1: Vector2<f32>, dir1: Vector2<f32>, pos2: Vector2<f32
     Ok((a.invert().ok_or(())? * (pos2 - pos1)).x)
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_reflect() {
+        let axis = Vector2::new(1.0, 0.0);
+        assert!((Vector2::new(1.0, -1.0) - reflect(axis, [1.0, 1.0].into())).magnitude().abs() < 1e-5);
+        assert!((Vector2::new(1.0, -1.0) - reflect(-axis, [1.0, 1.0].into())).magnitude().abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_intersect() {
+        let case1 = intersection_lambda([0.0, 0.0].into(), [1.0, 0.0].into(), [0.0, 1.0].into(), [1.0, 0.0].into());
+        assert!(matches!(case1, Err(())));
+        let case2 = intersection_lambda([0.0, 0.0].into(), [2.0, 0.0].into(), [1.0, 1.0].into(), [0.0, 1.0].into());
+        assert!(case2.is_ok_and(|val| (val - 0.5).abs() < 1e-5));
+    }
+}
+
+#[derive(enum_map::Enum, Debug)]
+enum Walls {
+    Top,
+    Right,
+    Left,
+    Bottom
+}
+
 impl Ball {
     fn new(pos: [f32;2], r: f32, damp:f32) -> Ball {
         Ball {pos: pos.into(), vel: [0.0,0.0].into(), 
             r, is_held: false, 
             current_mouse_pos: [0.0,0.0].into(), 
-            last_mouse_pos: [0.0, 0.0].into(), damp}
+            last_mouse_pos: [0.0, 0.0].into(), damp,
+            wall_point_and_directions: enum_map::enum_map! {
+                Walls::Bottom => ([0.0, HEI-r].into(), [1.0, 0.0].into()),
+                Walls::Left => ([r, 0.0].into(), [0.0, 1.0].into()),
+                Walls::Right => ([WID-r, 0.0].into(), [0.0, 1.0].into()),
+                Walls::Top => ([0.0, r].into(), [1.0, 0.0].into())
+            }, }
     }
 
     fn dynamics(&mut self, dt: f32) {
@@ -44,25 +78,32 @@ impl Ball {
                 self.pos = self.current_mouse_pos
                     .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
                     .zip([WID - self.r, HEI - self.r].into(), f32::min);
-                self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
+                self.vel = 0.2 * (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
                 self.vel -= self.vel * self.damp;
                 
-                let collision_dt = intersection_lambda(self.pos, self.vel, [0.0, self.r].into(), [1.0, 0.0].into());
+                for (key, (p2, d2)) in self.wall_point_and_directions {
+                    let collision_dt = intersection_lambda(self.pos, self.vel, p2, d2);
 
-                match collision_dt {
-                    //collides this frame
-                    Ok(col_dt) if col_dt > 0.0 && col_dt < dt => {
-                        self.pos += self.vel * col_dt;
-                        self.vel = reflect([1.0, 0.0].into(), self.vel);
-                        self.pos += self.vel * (dt - col_dt);
-                    },
-                    //no collision this frame
-                    Ok(_) | Err(_) => {
-                        self.pos += self.vel * dt;
-                    },
+                    if let (Walls::Top, Ok(col_dt)) = (key, collision_dt) {
+                        dbg!(col_dt, dt);
+                    }
+
+                    match collision_dt {
+                        //collides this frame
+                        Ok(col_dt) if col_dt >= 0.0 && col_dt <= dt => {
+                            self.pos += self.vel * col_dt;
+                            self.vel = reflect(d2, self.vel);
+                            self.pos += self.vel * (dt - col_dt);
+                        },
+                        //no collision this frame
+                        Ok(_) | Err(_) => {
+                            self.pos += self.vel * dt;
+                        },
+                    }
                 }
+
 
             },
         }
@@ -72,7 +113,6 @@ impl Ball {
 use egaku2d::glutin::event::{Event, WindowEvent, ElementState, MouseButton};
 impl Component for Ball {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32) {
-        dbg!(self.pos);
         self.dynamics(dt);
         canvas
             .circles()
