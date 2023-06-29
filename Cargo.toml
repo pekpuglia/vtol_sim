@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 cgmath = "0.18.0"
 egaku2d = "0.5.4"
+enum-map = "2.5.0"
