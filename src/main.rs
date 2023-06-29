@@ -2,6 +2,9 @@ mod graphical_utils;
 use graphical_utils::*;
 use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix};
 
+const WID: f32 = 600.0;
+const HEI: f32 = 480.0;
+
 struct Ball {
     pos: Vector2<f32>,
     vel: Vector2<f32>,
@@ -18,6 +21,15 @@ fn reflect(axis: Vector2<f32>, to_reflect: Vector2<f32>) -> Vector2<f32> {
     axis_base * Matrix2::new(1.0, 0.0, 0.0, -1.0) * axis_base.invert().expect("axis_base should be isometric") * to_reflect
 }
 
+fn intersection_lambda(pos1: Vector2<f32>, dir1: Vector2<f32>, pos2: Vector2<f32>, dir2: Vector2<f32>) -> Result<f32, ()> {
+    //pos1 + lambda1 * dir1 = pos2 + lambda2 * dir2
+    //[dir1 -dir2] * [lambda1; lambda2] = pos2 - pos1
+    //returns lambda1
+    let a = Matrix2::from_cols(dir1, -dir2);
+    
+    Ok((a.invert().ok_or(())? * (pos2 - pos1)).x)
+}
+
 impl Ball {
     fn new(pos: [f32;2], r: f32, damp:f32) -> Ball {
         Ball {pos: pos.into(), vel: [0.0,0.0].into(), 
@@ -29,19 +41,48 @@ impl Ball {
     fn dynamics(&mut self, dt: f32) {
         match self.is_held {
             true => {
-                self.pos = self.current_mouse_pos;
+                self.pos = self.current_mouse_pos
+                    .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
+                    .zip([WID - self.r, HEI - self.r].into(), f32::min);
                 self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
                 self.vel -= self.vel * self.damp;
-                self.pos = self.pos + dt * self.vel;
-                if self.pos.x < 0.0 || self.pos.x > 600.0 {
-                    self.vel = reflect([0.0, 1.0].into(), self.vel)
+                
+                
+                let mut remaining_dt = dt;
+
+                while remaining_dt > 0.0 {
+                    let (index, dt_collision) = [
+                        intersection_lambda([0.0+self.r, 0.0+self.r].into(), [1.0, 0.0].into(), self.pos, self.vel),
+                        intersection_lambda([0.0+self.r, 0.0+self.r].into(), [0.0, 1.0].into(), self.pos, self.vel),
+                        intersection_lambda([WID-self.r, HEI-self.r].into(), [1.0, 0.0].into(), self.pos, self.vel),
+                        intersection_lambda([WID-self.r, HEI-self.r].into(), [1.0, 0.0].into(), self.pos, self.vel),
+                    ]
+                        .iter()
+                        .enumerate()
+                        .filter_map(|el| 
+                            el.1.and_then(|val| Ok((el.0, val))).ok())
+                            .reduce(|acc, el|  match acc.1 < el.1 {
+                                true => acc,
+                                false => el,
+                            })
+                            .unzip();
+    
+                    let safe_dt = dt_collision.map_or(remaining_dt, |val| val.min(remaining_dt));
+    
+                    self.pos = self.pos + safe_dt * self.vel;
+                    remaining_dt -= safe_dt;
+    
+                    match index {
+                        Some(1) => {self.vel = reflect([1.0, 0.0].into(), self.vel)},
+                        Some(2) => {self.vel = reflect([0.0, 1.0].into(), self.vel)},
+                        Some(3) => {self.vel = reflect([1.0, 0.0].into(), self.vel)},
+                        Some(_) => {self.vel = reflect([0.0, 1.0].into(), self.vel)},
+                        None => {},
+                    }
                 }
 
-                if self.pos.y < 0.0 || self.pos.y > 480.0 {
-                    self.vel = reflect([1.0, 0.0].into(), self.vel)
-                }
             },
         }
     }
@@ -50,11 +91,12 @@ impl Ball {
 use egaku2d::glutin::event::{Event, WindowEvent, ElementState, MouseButton};
 impl Component for Ball {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32) {
+        dbg!(self.pos);
         self.dynamics(dt);
         canvas
             .circles()
             .add(self.pos.into())
-            .send_and_uniforms(canvas, self.r)
+            .send_and_uniforms(canvas, 2.0*self.r)
             .with_color([1.0,1.0,1.0,1.0])
             .draw();
     }
@@ -84,12 +126,12 @@ fn main() {
     
     let mut drawer = Drawer::new(
         60, 
-        600, 
-        480, 
+        WID as usize, 
+        HEI as usize, 
         "test", 
         &ev_loop,
         vec![
-            Box::new(Ball::new([300.0, 240.0], 30.0, 0.01))
+            Box::new(Ball::new([WID/2.0, HEI/2.0], 30.0, 0.01))
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
