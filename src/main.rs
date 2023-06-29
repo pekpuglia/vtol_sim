@@ -49,15 +49,14 @@ impl Ball {
             false => {
                 self.vel -= self.vel * self.damp;
                 
-                
                 let mut remaining_dt = dt;
 
                 while remaining_dt > 0.0 {
                     let (index, dt_collision) = [
-                        intersection_lambda([0.0+self.r, 0.0+self.r].into(), [1.0, 0.0].into(), self.pos, self.vel),
-                        intersection_lambda([0.0+self.r, 0.0+self.r].into(), [0.0, 1.0].into(), self.pos, self.vel),
-                        intersection_lambda([WID-self.r, HEI-self.r].into(), [1.0, 0.0].into(), self.pos, self.vel),
-                        intersection_lambda([WID-self.r, HEI-self.r].into(), [1.0, 0.0].into(), self.pos, self.vel),
+                        intersection_lambda(self.pos, self.vel, [0.0+self.r, 0.0+self.r].into(), [1.0, 0.0].into()),
+                        intersection_lambda(self.pos, self.vel, [0.0+self.r, 0.0+self.r].into(), [0.0, 1.0].into()),
+                        intersection_lambda(self.pos, self.vel, [WID-self.r, HEI-self.r].into(), [1.0, 0.0].into()),
+                        intersection_lambda(self.pos, self.vel, [WID-self.r, HEI-self.r].into(), [1.0, 0.0].into()),
                     ]
                         .iter()
                         .enumerate()
