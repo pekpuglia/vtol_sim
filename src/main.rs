@@ -1,4 +1,6 @@
 mod graphical_utils;
+use std::cmp::min;
+
 use graphical_utils::*;
 use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix};
 
@@ -72,6 +74,37 @@ impl Ball {
             }, }
     }
 
+    fn calculate_next_collision(&self) -> Option<(f32, Walls)> {
+        let mut collision_with_walls = self.wall_point_and_directions
+            .iter()
+            .map(|(key, (p2, d2))| 
+                (intersection_lambda(self.pos, self.vel, p2.to_owned(), d2.to_owned()), key))
+            .map(|min_opt| min_opt.0.ok().map(|time_opt| (time_opt, min_opt.1)))
+            .flatten()
+            .collect::<Vec<(f32, Walls)>>();
+        collision_with_walls.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("no NaNs should be here, exploding..."));
+
+        collision_with_walls.get(0).copied()
+        // for (key, (p2, d2)) in self.wall_point_and_directions {
+        //     let collision_dt = intersection_lambda(self.pos, self.vel, p2, d2);
+
+        //     match collision_dt {
+        //         //collides this frame
+        //         Ok(col_dt) if col_dt >= 0.0 && col_dt <= dt => {
+        //             // self.pos += self.vel * col_dt;
+        //             // self.vel = reflect(d2, self.vel);
+        //             // self.pos += self.vel * (dt - col_dt);
+        //             safe_dt = safe_dt.min(col_dt);
+        //             collision = Some(key);
+        //         },
+        //         //no collision this frame
+        //         Ok(_) | Err(_) => {
+        //             // self.pos += self.vel * dt;
+        //         },
+        //     }
+        // }
+    }
+
     fn dynamics(&mut self, dt: f32) {
         match self.is_held {
             true => {
@@ -82,15 +115,12 @@ impl Ball {
             },
             false => {
                 self.vel -= self.vel * self.damp;
-
+                
                 let mut safe_dt = dt;
                 let mut collision = None;
                 for (key, (p2, d2)) in self.wall_point_and_directions {
                     let collision_dt = intersection_lambda(self.pos, self.vel, p2, d2);
 
-                    if let (Walls::Top, Ok(col_dt)) = (key, collision_dt) {
-                        dbg!(col_dt, dt);
-                    }
                     match collision_dt {
                         //collides this frame
                         Ok(col_dt) if col_dt >= 0.0 && col_dt <= dt => {
