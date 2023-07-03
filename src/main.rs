@@ -6,17 +6,6 @@ use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix};
 const WID: f32 = 600.0;
 const HEI: f32 = 480.0;
 
-struct Ball {
-    pos: Vector2<f32>,
-    vel: Vector2<f32>,
-    damp: f32,
-    r: f32,
-    is_held: bool,
-    current_mouse_pos: Vector2<f32>,
-    last_mouse_pos: Vector2<f32>,
-    wall_point_and_directions: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
-}
-
 fn reflect(axis: Vector2<f32>, to_reflect: Vector2<f32>) -> Vector2<f32> {
     let norm_axis = axis.normalize();
     let axis_base = Matrix2::new(norm_axis.x, norm_axis.y, -norm_axis.y, norm_axis.x);
@@ -57,6 +46,18 @@ enum Walls {
     Right,
     Left,
     Bottom
+}
+
+struct Ball {
+    pos: Vector2<f32>,
+    vel: Vector2<f32>,
+    damp: f32,
+    r: f32,
+    is_held: bool,
+    current_mouse_pos: Vector2<f32>,
+    last_mouse_pos: Vector2<f32>,
+    //trocar p point and normals p/ dentro do mapa
+    wall_point_and_directions: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
 }
 
 impl Ball {
