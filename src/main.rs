@@ -1,5 +1,4 @@
 mod graphical_utils;
-use std::cmp::min;
 
 use graphical_utils::*;
 use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix};
@@ -77,32 +76,21 @@ impl Ball {
     fn calculate_next_collision(&self) -> Option<(f32, Walls)> {
         let mut collision_with_walls = self.wall_point_and_directions
             .iter()
+            //cálculo dos lambdas de intersecção
             .map(|(key, (p2, d2))| 
                 (intersection_lambda(self.pos, self.vel, p2.to_owned(), d2.to_owned()), key))
+            //transforma em option de pares  
             .map(|min_opt| min_opt.0.ok().map(|time_opt| (time_opt, min_opt.1)))
+            //vec de pares
             .flatten()
+            //remover os negativos
+            .filter(|(dt, _wall)| dt.to_owned() >= 0.0)
             .collect::<Vec<(f32, Walls)>>();
+
+        //talvez pegue o mais negativo
         collision_with_walls.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("no NaNs should be here, exploding..."));
 
         collision_with_walls.get(0).copied()
-        // for (key, (p2, d2)) in self.wall_point_and_directions {
-        //     let collision_dt = intersection_lambda(self.pos, self.vel, p2, d2);
-
-        //     match collision_dt {
-        //         //collides this frame
-        //         Ok(col_dt) if col_dt >= 0.0 && col_dt <= dt => {
-        //             // self.pos += self.vel * col_dt;
-        //             // self.vel = reflect(d2, self.vel);
-        //             // self.pos += self.vel * (dt - col_dt);
-        //             safe_dt = safe_dt.min(col_dt);
-        //             collision = Some(key);
-        //         },
-        //         //no collision this frame
-        //         Ok(_) | Err(_) => {
-        //             // self.pos += self.vel * dt;
-        //         },
-        //     }
-        // }
     }
 
     fn dynamics(&mut self, dt: f32) {
@@ -114,38 +102,20 @@ impl Ball {
                 self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
-                self.vel -= self.vel * self.damp;
+                let next_collision = self.calculate_next_collision();
                 
-                let mut safe_dt = dt;
-                let mut collision = None;
-                for (key, (p2, d2)) in self.wall_point_and_directions {
-                    let collision_dt = intersection_lambda(self.pos, self.vel, p2, d2);
-
-                    match collision_dt {
-                        //collides this frame
-                        Ok(col_dt) if col_dt >= 0.0 && col_dt <= dt => {
-                            // self.pos += self.vel * col_dt;
-                            // self.vel = reflect(d2, self.vel);
-                            // self.pos += self.vel * (dt - col_dt);
-                            safe_dt = safe_dt.min(col_dt);
-                            collision = Some(key);
-                        },
-                        //no collision this frame
-                        Ok(_) | Err(_) => {
-                            // self.pos += self.vel * dt;
-                        },
-                    }
-                }
-
-                self.pos += self.vel * safe_dt;
-                match collision {
-                    Some(wall) => {
+                match next_collision {
+                    Some((t, wall)) if t < dt => {
+                        self.pos += self.vel * t;
                         self.vel = reflect(self.wall_point_and_directions[wall].1, self.vel);
-                        self.pos += self.vel * (dt - safe_dt);
+                        self.pos += self.vel * (dt - t);
                     },
-                    None => {},
+                    Some(_) | None => {
+                        self.pos += self.vel * dt;
+                    },
                 }
-
+                
+                self.vel -= self.vel * self.damp * dt;
             },
         }
     }
@@ -193,7 +163,7 @@ fn main() {
         "test", 
         &ev_loop,
         vec![
-            Box::new(Ball::new([WID/2.0, HEI/2.0], 30.0, 0.01))
+            Box::new(Ball::new([WID/2.0, HEI/2.0], 30.0, 1.0))
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
