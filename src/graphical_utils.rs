@@ -1,4 +1,4 @@
-use std::time::{self, Instant};
+use std::time::{Instant};
 
 use egaku2d::{glutin::{event::{Event, WindowEvent, VirtualKeyCode}, event_loop::{ControlFlow, EventLoop}}, SimpleCanvas};
 
