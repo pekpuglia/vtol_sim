@@ -102,8 +102,11 @@ impl Ball {
                 self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
+                //considerar mais de uma colisão por frame:
+                //usar normal das paredes
+                //"consumir" tempo restante
                 let next_collision = self.calculate_next_collision();
-                
+                dbg!(next_collision);
                 match next_collision {
                     Some((t, wall)) if t < dt => {
                         self.pos += self.vel * t;
