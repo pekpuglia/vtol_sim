@@ -4,5 +4,5 @@ mod math_helpers;
 
 mod bicopter;
 fn main() {
-    ball::ball_main();
+    bicopter::bicopter_main();
 }
