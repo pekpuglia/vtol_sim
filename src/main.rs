@@ -109,18 +109,19 @@ impl Ball {
                 let next_collision = self.calculate_next_collision();
                 dbg!(next_collision);
                 
-                match next_collision {
-                    Some((t, wall)) if t <= dt => {
-                        self.pos += self.vel * t;
-                        self.vel = reflect(Matrix2::from_angle(Deg(90.0)) * self.wall_point_and_normals[wall].1, self.vel);
-                    },
-                    Some(_) | None => {
-                        self.pos += self.vel * dt;
-                    },
+    
+                let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(dt);
+                
+                self.pos += self.vel * free_movement_time;
+                self.vel -= self.vel *self.damp*free_movement_time;
+
+                if let Some((_, wall)) = next_collision {
+                    if free_movement_time < dt {
+                        self.vel = reflect(Matrix2::from_angle(Deg(90.0))*self.wall_point_and_normals[wall].1, self.vel)
+                    }
                 }
                 
                 dbg!(self.pos, self.vel);
-                self.vel -= self.vel *self.damp*dt
             },
         }
     }
@@ -168,7 +169,7 @@ fn main() {
         "test", 
         &ev_loop,
         vec![
-            Box::new(Ball::new([WID/2.0, HEI/2.0], 30.0, 1.0))
+            Box::new(Ball::new([WID/2.0, HEI/2.0], 30.0, 0.1))
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
