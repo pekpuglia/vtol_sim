@@ -3,7 +3,7 @@ use crate::math_helpers::*;
 use nalgebra::Vector2;
 use ode_solvers::Vector4;
 use nalgebra::geometry::Rotation2;
-use ode_solvers::{System, rk4::*};
+use ode_solvers::{System, Dopri5};
 const WID: f32 = 600.0;
 const HEI: f32 = 480.0;
 
@@ -36,12 +36,15 @@ impl System<Vector4<f64>> for Ball {
         dy.w = -y.w*self.damp;
     }
 
-    // fn solout(&mut self, _x: f64, _y: &Vector4<f64>, _dy: &Vector4<f64>) -> bool {
-    //     self.wall_point_and_normals
-    //         .iter()
-    //         .map(|el| (el.0, el.1.1.dot(self.pos - el.1.0)))
-    //         .filter(|wall|)
-    // }
+    fn solout(&mut self, _x: f64, y: &Vector4<f64>, _dy: &Vector4<f64>) -> bool {
+        let current_pos = Vector2::new(y.x, y.y).cast();
+        let first = self.wall_point_and_normals
+            .iter()
+            .map(|el| (el.0, el.1.1.dot(&(current_pos - el.1.0))))
+            .filter(|(_wall, dot)| *dot < 0.0)
+            .nth(0);
+        first.is_some()
+    }
 }
 
 impl Ball {
@@ -54,28 +57,8 @@ impl Ball {
                 Walls::Bottom => ([0.0, HEI-r].into(), [0.0, -1.0].into()),
                 Walls::Left => ([r, 0.0].into(), [1.0, 0.0].into()),
                 Walls::Right => ([WID-r, 0.0].into(), [-1.0, 0.0].into()),
-                Walls::Top => ([0.0, r].into(), [0.0, 1.0].into()), }
+                Walls::Top => ([0.0, r].into(), [0.0, 1.0].into()), },
         }
-    }
-
-    fn calculate_next_collision(&self) -> Option<(f32, Walls)> {
-        let mut collision_with_walls = self.wall_point_and_normals
-            .iter()
-            //cálculo dos lambdas de intersecção
-            .map(|(key, (p2, n2))| 
-                (intersection_lambda(self.pos, self.vel, p2.to_owned(), Rotation2::new(std::f32::consts::FRAC_PI_2) * n2), key))
-            //transforma em option de pares  
-            .map(|min_opt| min_opt.0.ok().map(|time_opt| (time_opt, min_opt.1)))
-            //vec de pares
-            .flatten()
-            //remover os negativos
-            .filter(|(dt, wall)| dt.to_owned() >= 0.0 && self.vel.dot(&self.wall_point_and_normals[*wall].1) < 0.0)
-            .collect::<Vec<(f32, Walls)>>();
-
-        //talvez pegue o mais negativo
-        collision_with_walls.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("no NaNs should be here, exploding..."));
-
-        collision_with_walls.first().copied()
     }
 
     fn dynamics(&mut self, dt: f32) {
@@ -89,28 +72,32 @@ impl Ball {
             false => {
                 let mut remaining_dt = dt;
                 while remaining_dt > 0.0 {
-                    let next_collision = self.calculate_next_collision();
-        
-                    let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(remaining_dt);
-                    let mut integrator = Rk4::new(
+                    let mut integrator = Dopri5::new(
                         *self, 
                         0.0, 
-                        Vector4::new(self.pos.x, self.pos.y, self.vel.x, self.vel.y).cast(), 
-                        free_movement_time.into(), 
-                        free_movement_time as f64 / 5.0);
+                        dt.into(), 
+                       dt as f64 /5.0 ,
+                        Vector4::new(self.pos.x, self.pos.y, self.vel.x, self.vel.y).cast(),
+                        1e-8,
+                        1e-8);
 
                     let _stats = integrator.integrate();
-                    
 
                     let new_state_vec = integrator.y_out().last().expect("should have integrated at least 1 step").to_owned();
                     self.pos = Vector2::new(new_state_vec.x as f32, new_state_vec.y as f32)
                         .zip_map(&Vector2::new(self.r, self.r), |v1, v2| v1.max(v2))
                         .zip_map(&Vector2::new(WID-self.r, HEI-self.r), |v1, v2| v1.min(v2));
                     self.vel = Vector2::new(new_state_vec.z as f32, new_state_vec.w as f32);
+                    
+                    let free_movement_time = integrator.x_out().last().expect("should have integrated at least 1 step").to_owned() as f32;
+                    
+                    let next_collision = self.wall_point_and_normals
+                        .iter()
+                        .map(|el| (el.0, el.1.1.dot(&(Vector2::new(new_state_vec.x as f32, new_state_vec.y as f32) - el.1.0))))
+                        .filter(|(_wall, dot)| *dot < 0.0)
+                        .nth(0).unzip().0;
 
-                    let free_movement_time: f32 = integrator.x_out().last().expect("should have integrated at least 1 step").to_owned() as f32;
-    
-                    if let Some((_, wall)) = next_collision {
+                    if let Some(wall) = next_collision {
                         if free_movement_time < remaining_dt {
                             self.vel = reflect(Rotation2::new(std::f32::consts::FRAC_PI_2)*self.wall_point_and_normals[wall].1, self.vel)
                         }
