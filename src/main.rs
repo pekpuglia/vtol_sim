@@ -91,15 +91,13 @@ impl Ball {
         //talvez pegue o mais negativo
         collision_with_walls.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("no NaNs should be here, exploding..."));
 
-        collision_with_walls.get(0).copied()
+        collision_with_walls.first().copied()
     }
 
     fn dynamics(&mut self, dt: f32) {
         match self.is_held {
             true => {
-                self.pos = self.current_mouse_pos
-                    .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
-                    .zip([WID - self.r, HEI - self.r].into(), f32::min);
+                self.pos = self.current_mouse_pos;
                 self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
@@ -107,12 +105,10 @@ impl Ball {
                 //usar normal das paredes
                 //"consumir" tempo restante
                 let mut remaining_dt = dt;
-                // dbg!(dt);
                 while remaining_dt > 0.0 {
                     let next_collision = self.calculate_next_collision();
         
                     let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(remaining_dt);
-                    
                     self.pos += self.vel * free_movement_time;
                     // self.vel -= self.vel *self.damp*free_movement_time;
     
@@ -122,12 +118,12 @@ impl Ball {
                         }
                     }
                     remaining_dt -= free_movement_time;
-                    // println!("{:.5}", remaining_dt)
                 }
             },
         }
-        dbg!(self.pos, self.vel);
-
+        self.pos = self.pos
+            .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
+            .zip([WID - self.r, HEI - self.r].into(), f32::min);
     }
 }
 
