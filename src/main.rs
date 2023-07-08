@@ -106,24 +106,28 @@ impl Ball {
                 //considerar mais de uma colisão por frame:
                 //usar normal das paredes
                 //"consumir" tempo restante
-                let next_collision = self.calculate_next_collision();
-                dbg!(next_collision);
-                
+                let mut remaining_dt = dt;
+                // dbg!(dt);
+                while remaining_dt > 0.0 {
+                    let next_collision = self.calculate_next_collision();
+        
+                    let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(remaining_dt);
+                    
+                    self.pos += self.vel * free_movement_time;
+                    // self.vel -= self.vel *self.damp*free_movement_time;
     
-                let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(dt);
-                
-                self.pos += self.vel * free_movement_time;
-                self.vel -= self.vel *self.damp*free_movement_time;
-
-                if let Some((_, wall)) = next_collision {
-                    if free_movement_time < dt {
-                        self.vel = reflect(Matrix2::from_angle(Deg(90.0))*self.wall_point_and_normals[wall].1, self.vel)
+                    if let Some((_, wall)) = next_collision {
+                        if free_movement_time < remaining_dt {
+                            self.vel = reflect(Matrix2::from_angle(Deg(90.0))*self.wall_point_and_normals[wall].1, self.vel)
+                        }
                     }
+                    remaining_dt -= free_movement_time;
+                    // println!("{:.5}", remaining_dt)
                 }
-                
-                dbg!(self.pos, self.vel);
             },
         }
+        dbg!(self.pos, self.vel);
+
     }
 }
 
@@ -148,6 +152,10 @@ impl Component for Ball {
                     self.is_held = (delta_x.powi(2) + delta_y.powi(2)).sqrt() < self.r;
                 },
                 (ElementState::Released, MouseButton::Left) => {self.is_held = false}
+                (ElementState::Pressed, MouseButton::Right) => {
+                    self.pos = self.current_mouse_pos;
+                    self.vel = [0.0, 0.0].into();
+                }
                 _ => {}
             }
         }
