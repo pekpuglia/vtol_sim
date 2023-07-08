@@ -1,6 +1,9 @@
 use crate::graphical_utils::*;
-use cgmath::{Vector2, Matrix2, InnerSpace, Deg, Vector4};
 use crate::math_helpers::*;
+use nalgebra::Matrix2;
+use nalgebra::Vector2;
+use nalgebra::Vector4;
+use nalgebra::geometry::Rotation2;
 use ode_solvers::System;
 const WID: f32 = 600.0;
 const HEI: f32 = 480.0;
@@ -57,13 +60,13 @@ impl Ball {
             .iter()
             //cálculo dos lambdas de intersecção
             .map(|(key, (p2, n2))| 
-                (intersection_lambda(self.pos, self.vel, p2.to_owned(), Matrix2::from_angle(Deg(90.0)) * n2), key))
+                (intersection_lambda(self.pos, self.vel, p2.to_owned(), Rotation2::new(std::f32::consts::FRAC_PI_2) * n2), key))
             //transforma em option de pares  
             .map(|min_opt| min_opt.0.ok().map(|time_opt| (time_opt, min_opt.1)))
             //vec de pares
             .flatten()
             //remover os negativos
-            .filter(|(dt, wall)| dt.to_owned() >= 0.0 && self.vel.dot(self.wall_point_and_normals[*wall].1) < 0.0)
+            .filter(|(dt, wall)| dt.to_owned() >= 0.0 && self.vel.dot(&self.wall_point_and_normals[*wall].1) < 0.0)
             .collect::<Vec<(f32, Walls)>>();
 
         //talvez pegue o mais negativo
@@ -91,7 +94,7 @@ impl Ball {
     
                     if let Some((_, wall)) = next_collision {
                         if free_movement_time < remaining_dt {
-                            self.vel = reflect(Matrix2::from_angle(Deg(90.0))*self.wall_point_and_normals[wall].1, self.vel)
+                            self.vel = reflect(Rotation2::new(std::f32::consts::FRAC_PI_2)*self.wall_point_and_normals[wall].1, self.vel)
                         }
                     }
                     remaining_dt -= free_movement_time;
@@ -99,8 +102,10 @@ impl Ball {
             },
         }
         self.pos = self.pos
-            .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
-            .zip([WID - self.r, HEI - self.r].into(), f32::min);
+            .zip_map(&Vector2::new(self.r, self.r), |v1, v2| v1.max(v2))
+            .zip_map(&Vector2::new(WID-self.r, HEI-self.r), |v1, v2| v1.min(v2))
+            // .zip([0.0   + self.r, 0.0   + self.r].into(), f32::max)
+            // .zip([WID - self.r, HEI - self.r].into(), f32::min);
     }
 }
 
