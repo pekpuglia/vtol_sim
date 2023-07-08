@@ -1,6 +1,4 @@
-use cgmath::Angle;
-use cgmath::Rad;
-use cgmath::Vector2;
+use nalgebra::{Vector2};
 
 use crate::graphical_utils::*;
 use crate::math_helpers::*;
@@ -11,7 +9,7 @@ const HEI: f32 = 480.0;
 struct Bicopter {
     pos: Vector2<f32>,
     //sentido horário!
-    angle: Rad<f32>,
+    angle_rad: f32,
     mass: f32,
     inertia: f32,
     prop_dist: f32,
@@ -24,7 +22,7 @@ struct Bicopter {
 
 impl Component for Bicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32) {
-        let left_right = Vector2::new(self.angle.cos(), self.angle.sin());
+        let left_right = Vector2::new(self.angle_rad.cos(), self.angle_rad.sin());
         canvas
             .lines(5.0)
             .add((self.pos - self.prop_dist/2.0 * left_right).into(), (self.pos + self.prop_dist/2.0 * left_right).into())
@@ -50,7 +48,7 @@ pub fn bicopter_main() {
         vec![
             Box::new(Bicopter{
                 pos:[WID/2.0,HEI/2.0].into(),
-                angle:Rad(std::f32::consts::FRAC_PI_4),
+                angle_rad:std::f32::consts::FRAC_PI_4,
                 mass:1.1,
                 inertia:1e-2,
                 prop_dist:40.0,
