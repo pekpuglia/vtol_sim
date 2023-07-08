@@ -99,17 +99,16 @@ impl Ball {
                         free_movement_time.into(), 
                         free_movement_time as f64 / 5.0);
 
-                    let stats = integrator.integrate();
+                    let _stats = integrator.integrate();
                     
 
                     let new_state_vec = integrator.y_out().last().expect("should have integrated at least 1 step").to_owned();
                     self.pos = Vector2::new(new_state_vec.x as f32, new_state_vec.y as f32)
                         .zip_map(&Vector2::new(self.r, self.r), |v1, v2| v1.max(v2))
                         .zip_map(&Vector2::new(WID-self.r, HEI-self.r), |v1, v2| v1.min(v2));
-                    
                     self.vel = Vector2::new(new_state_vec.z as f32, new_state_vec.w as f32);
 
-                    let free_movement_time: f32 = integrator.x_out().last().expect("should have integrated at elast 1 step").to_owned() as f32;
+                    let free_movement_time: f32 = integrator.x_out().last().expect("should have integrated at least 1 step").to_owned() as f32;
     
                     if let Some((_, wall)) = next_collision {
                         if free_movement_time < remaining_dt {
