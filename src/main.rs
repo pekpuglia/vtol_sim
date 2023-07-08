@@ -1,7 +1,7 @@
 mod graphical_utils;
 
 use graphical_utils::*;
-use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix};
+use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix, Deg};
 
 const WID: f32 = 600.0;
 const HEI: f32 = 480.0;
@@ -56,8 +56,8 @@ struct Ball {
     is_held: bool,
     current_mouse_pos: Vector2<f32>,
     last_mouse_pos: Vector2<f32>,
-    //trocar p point and normals p/ dentro do mapa
-    wall_point_and_directions: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
+    //normals p/ dentro do mapa
+    wall_point_and_normals: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
 }
 
 impl Ball {
@@ -66,26 +66,26 @@ impl Ball {
             r, is_held: false, 
             current_mouse_pos: [0.0,0.0].into(), 
             last_mouse_pos: [0.0, 0.0].into(), damp,
-            wall_point_and_directions: enum_map::enum_map! {
-                Walls::Bottom => ([0.0, HEI-r].into(), [1.0, 0.0].into()),
-                Walls::Left => ([r, 0.0].into(), [0.0, 1.0].into()),
-                Walls::Right => ([WID-r, 0.0].into(), [0.0, 1.0].into()),
-                Walls::Top => ([0.0, r].into(), [1.0, 0.0].into())
-            }, }
+            wall_point_and_normals: enum_map::enum_map! {
+                Walls::Bottom => ([0.0, HEI-r].into(), [0.0, -1.0].into()),
+                Walls::Left => ([r, 0.0].into(), [1.0, 0.0].into()),
+                Walls::Right => ([WID-r, 0.0].into(), [-1.0, 0.0].into()),
+                Walls::Top => ([0.0, r].into(), [0.0, 1.0].into()), }
+        }
     }
 
     fn calculate_next_collision(&self) -> Option<(f32, Walls)> {
-        let mut collision_with_walls = self.wall_point_and_directions
+        let mut collision_with_walls = self.wall_point_and_normals
             .iter()
             //cálculo dos lambdas de intersecção
-            .map(|(key, (p2, d2))| 
-                (intersection_lambda(self.pos, self.vel, p2.to_owned(), d2.to_owned()), key))
+            .map(|(key, (p2, n2))| 
+                (intersection_lambda(self.pos, self.vel, p2.to_owned(), Matrix2::from_angle(Deg(90.0)) * n2), key))
             //transforma em option de pares  
             .map(|min_opt| min_opt.0.ok().map(|time_opt| (time_opt, min_opt.1)))
             //vec de pares
             .flatten()
             //remover os negativos
-            .filter(|(dt, _wall)| dt.to_owned() >= 0.0)
+            .filter(|(dt, wall)| dt.to_owned() >= 0.0 && self.vel.dot(self.wall_point_and_normals[*wall].1) < 0.0)
             .collect::<Vec<(f32, Walls)>>();
 
         //talvez pegue o mais negativo
@@ -108,18 +108,19 @@ impl Ball {
                 //"consumir" tempo restante
                 let next_collision = self.calculate_next_collision();
                 dbg!(next_collision);
+                
                 match next_collision {
-                    Some((t, wall)) if t < dt => {
+                    Some((t, wall)) if t <= dt => {
                         self.pos += self.vel * t;
-                        self.vel = reflect(self.wall_point_and_directions[wall].1, self.vel);
-                        self.pos += self.vel * (dt - t);
+                        self.vel = reflect(Matrix2::from_angle(Deg(90.0)) * self.wall_point_and_normals[wall].1, self.vel);
                     },
                     Some(_) | None => {
                         self.pos += self.vel * dt;
                     },
                 }
                 
-                self.vel -= self.vel * self.damp * dt;
+                dbg!(self.pos, self.vel);
+                self.vel -= self.vel *self.damp*dt
             },
         }
     }
@@ -161,7 +162,7 @@ fn main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
     
     let mut drawer = Drawer::new(
-        60, 
+        30, 
         WID as usize, 
         HEI as usize, 
         "test", 
