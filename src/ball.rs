@@ -1,6 +1,5 @@
 use crate::graphical_utils::*;
 use crate::math_helpers::*;
-use nalgebra::Matrix2;
 use nalgebra::Vector2;
 use nalgebra::Vector4;
 use nalgebra::geometry::Rotation2;
@@ -29,7 +28,7 @@ struct Ball {
 }
 
 impl System<Vector4<f32>> for &mut Ball {
-    fn system(&self, x: f64, y: &Vector4<f32>, dy: &mut Vector4<f32>) {
+    fn system(&self, _x: f64, y: &Vector4<f32>, dy: &mut Vector4<f32>) {
         dy[0] = y[2];
         dy[1] = y[3];
         dy[3] = -y[3]*self.damp;
