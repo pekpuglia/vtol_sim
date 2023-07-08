@@ -1,12 +1,9 @@
 use crate::graphical_utils::*;
-use cgmath::{Vector2, Matrix2, InnerSpace, Deg};
+use cgmath::{Vector2, Matrix2, InnerSpace, Deg, Vector4};
 use crate::math_helpers::*;
+use ode_solvers::System;
 const WID: f32 = 600.0;
 const HEI: f32 = 480.0;
-
-
-
-
 
 #[derive(enum_map::Enum, Debug, Clone, Copy)]
 enum Walls {
@@ -26,6 +23,19 @@ struct Ball {
     last_mouse_pos: Vector2<f32>,
     //normals p/ dentro do mapa
     wall_point_and_normals: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
+}
+
+impl System<Vector4<f32>> for &mut Ball {
+    fn system(&self, x: f64, y: &Vector4<f32>, dy: &mut Vector4<f32>) {
+        dy[0] = y[2];
+        dy[1] = y[3];
+        dy[3] = -y[3]*self.damp;
+        dy[4] = -y[4]*self.damp;
+    }
+
+    // fn solout(&mut self, _x: f64, _y: &Vector4<f32>, _dy: &Vector4<f32>) -> bool {
+        
+    // }
 }
 
 impl Ball {
@@ -73,9 +83,11 @@ impl Ball {
                 while remaining_dt > 0.0 {
                     let next_collision = self.calculate_next_collision();
         
+                    // let res = ode_solvers::Rk4::new(self, 0.0, self.pos.extend(self.vel.x).extend(self.vel.y), dt.into(), 0.01f64);
+
                     let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(remaining_dt);
                     self.pos += self.vel * free_movement_time;
-                    self.vel -= self.vel *self.damp*free_movement_time;
+                    self.vel -= self.vel * self.damp*free_movement_time;
     
                     if let Some((_, wall)) = next_collision {
                         if free_movement_time < remaining_dt {
