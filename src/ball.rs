@@ -1,9 +1,9 @@
 use crate::graphical_utils::*;
 use crate::math_helpers::*;
 use nalgebra::Vector2;
-use nalgebra::Vector4;
+use ode_solvers::Vector4;
 use nalgebra::geometry::Rotation2;
-use ode_solvers::System;
+use ode_solvers::{System, rk4::*};
 const WID: f32 = 600.0;
 const HEI: f32 = 480.0;
 
@@ -15,10 +15,11 @@ enum Walls {
     Bottom
 }
 
+#[derive(Clone, Copy)]
 struct Ball {
     pos: Vector2<f32>,
     vel: Vector2<f32>,
-    damp: f32,
+    damp: f64,
     r: f32,
     is_held: bool,
     current_mouse_pos: Vector2<f32>,
@@ -27,12 +28,12 @@ struct Ball {
     wall_point_and_normals: enum_map::EnumMap<Walls, (Vector2<f32>, Vector2<f32>)>,
 }
 
-impl System<Vector4<f32>> for &mut Ball {
-    fn system(&self, _x: f64, y: &Vector4<f32>, dy: &mut Vector4<f32>) {
-        dy[0] = y[2];
-        dy[1] = y[3];
-        dy[3] = -y[3]*self.damp;
-        dy[4] = -y[4]*self.damp;
+impl System<Vector4<f64>> for Ball {
+    fn system(&self, _x: f64, y: &Vector4<f64>, dy: &mut Vector4<f64>) {
+        dy.x = y.z;
+        dy.y = y.w;
+        dy.z = -y.z*self.damp;
+        dy.w = -y.w*self.damp;
     }
 
     // fn solout(&mut self, _x: f64, _y: &Vector4<f32>, _dy: &Vector4<f32>) -> bool {
@@ -41,7 +42,7 @@ impl System<Vector4<f32>> for &mut Ball {
 }
 
 impl Ball {
-    fn new(pos: [f32;2], r: f32, damp:f32) -> Ball {
+    fn new(pos: [f32;2], r: f32, damp: f64) -> Ball {
         Ball {pos: pos.into(), vel: [0.0,0.0].into(), 
             r, is_held: false, 
             current_mouse_pos: [0.0,0.0].into(), 
@@ -85,11 +86,24 @@ impl Ball {
                 while remaining_dt > 0.0 {
                     let next_collision = self.calculate_next_collision();
         
-                    // let res = ode_solvers::Rk4::new(self, 0.0, self.pos.extend(self.vel.x).extend(self.vel.y), dt.into(), 0.01f64);
-
                     let free_movement_time = next_collision.unzip().0.unwrap_or(dt).min(remaining_dt);
-                    self.pos += self.vel * free_movement_time;
-                    self.vel -= self.vel * self.damp*free_movement_time;
+                    let mut integrator = Rk4::new(
+                        *self, 
+                        0.0, 
+                        Vector4::new(self.pos.x, self.pos.y, self.vel.x, self.vel.y).cast(), 
+                        free_movement_time.into(), 
+                        0.01);
+
+                    let stats = integrator.integrate();
+
+                    let new_state_vec = integrator.y_out().last().expect("should have integrated at least 1 step").to_owned();
+                    self.pos = Vector2::new(new_state_vec.x as f32, new_state_vec.y as f32);
+                    self.vel = Vector2::new(new_state_vec.z as f32, new_state_vec.w as f32);
+
+                    let free_movement_time: f32 = integrator.x_out().last().expect("should have integrated at elast 1 step").to_owned() as f32;
+
+                    // self.pos += self.vel * free_movement_time;
+                    // self.vel -= self.vel * self.damp*free_movement_time;
     
                     if let Some((_, wall)) = next_collision {
                         if free_movement_time < remaining_dt {
