@@ -120,7 +120,6 @@ impl Component for Bicopter {
 
             self.l_thrust = total_thrust / 2.0 + moment / (2.0 * self.prop_dist);
             self.r_thrust = total_thrust / 2.0 - moment / (2.0 * self.prop_dist);
-            dbg!(total_thrust, moment);
         }
 
         if let Event::WindowEvent { window_id, 
