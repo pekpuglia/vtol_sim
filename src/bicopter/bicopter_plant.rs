@@ -3,7 +3,7 @@ use ode_solvers::Vector6;
 use ode_solvers::{Rk4, System};
 
 #[derive(Clone, Copy)]
-pub struct BicopterModel {
+pub struct BicopterPlant {
     pos: Vector2<f32>,
     vel: Vector2<f32>,
     //sentido horário!
@@ -17,7 +17,7 @@ pub struct BicopterModel {
     pub r_thrust:f32
 }
 
-impl System<Vector6<f64>> for BicopterModel {
+impl System<Vector6<f64>> for BicopterPlant {
     fn system(&self, _x: f64, y: &Vector6<f64>, dy: &mut Vector6<f64>) {
         let thrust = (self.l_thrust + self.r_thrust) * self.propeller_direction();
         dy.x = y.w;
@@ -29,7 +29,7 @@ impl System<Vector6<f64>> for BicopterModel {
     }
 }
 
-impl BicopterModel {
+impl BicopterPlant {
 
     pub fn propeller_direction(&self) -> Vector2<f32> {
         Vector2::new(self.angle_rad.sin(), -self.angle_rad.cos())
@@ -100,8 +100,8 @@ impl BicopterModel {
         prop_dist: f32,
         l_thrust: f32,
         r_thrust:f32
-     ) -> BicopterModel {
-        BicopterModel {
+     ) -> BicopterPlant {
+        BicopterPlant {
             pos,
             vel,
             angle_rad,
