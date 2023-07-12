@@ -1,7 +1,4 @@
 use egaku2d::glutin::event::{Event, WindowEvent, MouseButton, ElementState};
-use nalgebra::{Rotation2, Vector2};
-use ode_solvers::Vector6;
-use ode_solvers::{Rk4, System};
 
 use crate::graphical_utils::*;
 const WID: f32 = 600.0;
@@ -63,9 +60,8 @@ impl Component for Bicopter {
             self.bicopter_model.r_thrust = total_thrust / 2.0 - moment / (2.0 * self.bicopter_model.prop_dist());
         }
 
-        if let Event::WindowEvent { window_id, 
-            event: WindowEvent::MouseInput { 
-                device_id, state, button, modifiers } } = ev {
+        if let Event::WindowEvent { event: WindowEvent::MouseInput { 
+                state, button, .. }, .. } = ev {
             match (state, button) {
                 (ElementState::Pressed, MouseButton::Right) => {self.paused = !self.paused},
                 _ => {}
