@@ -4,6 +4,8 @@ mod math_helpers;
 
 mod bicopter;
 
+//obs: player controller != (feedback) controller
+
 //todo
 //add config file
 //add ui with control options
@@ -12,5 +14,5 @@ mod bicopter;
 //add plane
 //add vtol
 fn main() {
-    bicopter::bicopter_main()
+    ball::ball_main()
 }

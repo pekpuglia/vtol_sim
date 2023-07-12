@@ -133,10 +133,12 @@ impl Component for Ball {
                     self.is_held = (delta_x.powi(2) + delta_y.powi(2)).sqrt() < self.r;
                 },
                 (ElementState::Released, MouseButton::Left) => {self.is_held = false}
-                (ElementState::Pressed, MouseButton::Right) => {
-                    self.pos = self.current_mouse_pos;
-                    self.vel = [0.0, 0.0].into();
+                (ElementState::Pressed, MouseButton::Middle) => {
+                    // self.pos = self.current_mouse_pos;
+                    // self.vel = [0.0, 0.0].into();
+                    self.is_held = !self.is_held;
                 }
+                
                 _ => {}
             }
         }
