@@ -1,4 +1,3 @@
-use egaku2d::glutin::event::{Event, WindowEvent, MouseButton, ElementState};
 use nalgebra::{Rotation2, Vector2};
 use ode_solvers::Vector6;
 use ode_solvers::{Rk4, System};
@@ -19,7 +18,7 @@ pub struct BicopterModel {
 }
 
 impl System<Vector6<f64>> for BicopterModel {
-    fn system(&self, x: f64, y: &Vector6<f64>, dy: &mut Vector6<f64>) {
+    fn system(&self, _x: f64, y: &Vector6<f64>, dy: &mut Vector6<f64>) {
         let thrust = (self.l_thrust + self.r_thrust) * self.propeller_direction();
         dy.x = y.w;
         dy.y = y.a;
@@ -67,7 +66,7 @@ impl BicopterModel {
             dt, 
         dt/5.0);
 
-        let stats = stepper.integrate();
+        let _stats = stepper.integrate();
 
         let final_state_vector = stepper.y_out().last().expect("should have integrated at least 1 step");
 
