@@ -1,4 +1,4 @@
-use egaku2d::glutin::event::{Event, WindowEvent, MouseButton, ElementState};
+use egaku2d::glutin::event::{Event, WindowEvent};
 
 use crate::graphical_utils::*;
 const WID: f32 = 600.0;
@@ -9,13 +9,12 @@ mod bicopter_physics;
 
 struct Bicopter {
     bicopter_model: bicopter_physics::BicopterModel,
-    paused: bool,
     max_thrust: f32
 }
 
 impl Component for Bicopter {
-    fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32) {
-        if !self.paused {
+    fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
+        if !paused {
             self.bicopter_model.update(dt as f64);
         }
 
@@ -59,14 +58,6 @@ impl Component for Bicopter {
             self.bicopter_model.l_thrust = total_thrust / 2.0 + moment / (2.0 * self.bicopter_model.prop_dist());
             self.bicopter_model.r_thrust = total_thrust / 2.0 - moment / (2.0 * self.bicopter_model.prop_dist());
         }
-
-        if let Event::WindowEvent { event: WindowEvent::MouseInput { 
-                state, button, .. }, .. } = ev {
-            match (state, button) {
-                (ElementState::Pressed, MouseButton::Right) => {self.paused = !self.paused},
-                _ => {}
-            }
-        }
     }
 }
 
@@ -81,18 +72,6 @@ pub fn bicopter_main() {
         &ev_loop,
         vec![
             Box::new(Bicopter{
-                // pos:[WID/2.0,HEI/2.0].into(),
-                // angle_rad: 0.0,
-                // mass:1.0,
-                // inertia:100.0,
-                // gravity:100.0,
-                // prop_dist:40.0,
-                // max_thrust:100.0,
-                // l_thrust:0.0,
-                // r_thrust:0.0, 
-                // vel: [0.0,0.0].into(), 
-                // ang_vel: 0.0,
-                paused: true,
                 max_thrust: 100.0,
                 bicopter_model: bicopter_physics::BicopterModel::new(
                     [WID/2.0,HEI/2.0].into(),

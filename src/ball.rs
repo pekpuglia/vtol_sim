@@ -112,8 +112,10 @@ impl Ball {
 
 use egaku2d::glutin::event::{Event, WindowEvent, ElementState, MouseButton};
 impl Component for Ball {
-    fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32) {
-        self.dynamics(dt);
+    fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
+        if !paused {
+            self.dynamics(dt);
+        }
         canvas
             .circles()
             .add(self.pos.into())

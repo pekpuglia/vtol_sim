@@ -1,9 +1,9 @@
-use std::time::{Instant};
+use std::time::Instant;
 
-use egaku2d::{glutin::{event::{Event, WindowEvent, VirtualKeyCode}, event_loop::{ControlFlow, EventLoop}}, SimpleCanvas};
+use egaku2d::{glutin::{event::{Event, WindowEvent, VirtualKeyCode, ElementState, MouseButton}, event_loop::{ControlFlow, EventLoop}}, SimpleCanvas};
 
 pub trait Component {
-    fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32);
+    fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool);
     fn receive_event(&mut self, ev: &Event<'_, ()>);
 }
 
@@ -14,6 +14,7 @@ pub struct Drawer {
     timer: egaku2d::RefreshTimer,
     components: Vec<Box<dyn Component>>,
     last_draw: Instant,
+    paused: bool
 }
 
 impl Drawer {
@@ -23,6 +24,7 @@ impl Drawer {
             timer: egaku2d::RefreshTimer::new(((1000 as f64) / (fps as f64)) as usize),
             components,
             last_draw: Instant::now(),
+            paused: true
         }
     }
 
@@ -33,7 +35,7 @@ impl Drawer {
             self.last_draw = now;
             let canvas = self.system.canvas_mut();
             canvas.clear_color([0.0,0.0,0.0]);
-            self.components.iter_mut().for_each(|c| c.draw(canvas, dt));
+            self.components.iter_mut().for_each(|c| c.draw(canvas, dt, self.paused));
             self.system.swap_buffers()
         }
     }
@@ -54,6 +56,12 @@ pub fn main_loop(ev: Event<'_, ()>, control_flow: &mut ControlFlow, drawer: &mut
                     }
                 },
                 WindowEvent::CloseRequested => {*control_flow = ControlFlow::Exit},
+                WindowEvent::MouseInput {state, button, .. } => {
+                    match (state, button) {
+                        (ElementState::Pressed, MouseButton::Right) => {drawer.paused = !drawer.paused},
+                        _ => {}
+                    }
+            }
                 _ => {}
             }
         },
