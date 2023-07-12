@@ -16,5 +16,5 @@ mod bicopter;
 //add plane
 //add vtol
 fn main() {
-    ball::ball_main()
+    bicopter::bicopter_main()
 }

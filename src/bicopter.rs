@@ -7,16 +7,16 @@ const HEI: f32 = 480.0;
 
 mod bicopter_plant;
 
-struct BicopterForceMomentController {
+struct BicopterForceMomentInputReceiver {
     force_gain: f32,
     moment_gain: f32,
     force: f32,
     moment: f32
 }
 
-impl BicopterForceMomentController {
-    fn new(force_gain: f32, moment_gain: f32) -> BicopterForceMomentController {
-        BicopterForceMomentController { 
+impl BicopterForceMomentInputReceiver {
+    fn new(force_gain: f32, moment_gain: f32) -> BicopterForceMomentInputReceiver {
+        BicopterForceMomentInputReceiver { 
             force_gain, 
             moment_gain, 
             force: 0.0, 
@@ -42,7 +42,7 @@ impl BicopterForceMomentController {
 
 struct Bicopter {
     plant: bicopter_plant::BicopterPlant,
-    controller: BicopterForceMomentController
+    controller: BicopterForceMomentInputReceiver
 }
 
 impl Component for Bicopter {
@@ -110,7 +110,7 @@ pub fn bicopter_main() {
                     40.0,
                     0.0,
                     0.0),
-                controller: BicopterForceMomentController::new(200.0, 1000.0) })
+                controller: BicopterForceMomentInputReceiver::new(200.0, 1000.0) })
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
