@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+control_systems = { git = "https://github.com/pekpuglia/control_systems.git", version = "0.1.0" }
 egaku2d = "0.5.4"
 enum-map = "2.5.0"
-nalgebra = "0.32.2"
+nalgebra = "^0.32.2"
 ode_solvers = "0.3.7"
