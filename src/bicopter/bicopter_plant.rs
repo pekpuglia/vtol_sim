@@ -1,7 +1,11 @@
-use nalgebra::{Rotation2, Vector2};
+use nalgebra::coordinates::X;
+use nalgebra::{Rotation2, Vector2, dvector, DVector};
 use ode_solvers::Vector6;
 use ode_solvers::{Rk4, System};
 
+use control_systems::DynamicalSystem;
+
+//remover estado
 #[derive(Clone, Copy)]
 pub struct BicopterPlant {
     pos: Vector2<f32>,
@@ -9,23 +13,61 @@ pub struct BicopterPlant {
     //sentido horário!
     angle_rad: f32,
     ang_vel: f32,
-    inertia: f32,
-    mass: f32,
-    gravity: f32,
-    prop_dist: f32,
-    pub l_thrust: f32,
-    pub r_thrust:f32
+    inertia: f64,
+    mass: f64,
+    gravity: f64,
+    prop_dist: f64,
+    pub l_thrust: f64,
+    pub r_thrust:f64
+}
+
+/*
+    State Vector:
+    0 x
+    1 y
+    2 theta
+    3 xdot
+    4 ydot
+    5 thetadot
+
+    Input:
+    lthrust
+    rthrust
+
+    Output:
+    State Vector
+*/
+impl DynamicalSystem for BicopterPlant {
+    const STATE_VECTOR_SIZE: usize = 6;
+
+    const INPUT_SIZE      : usize = 2;
+
+    const OUTPUT_SIZE     : usize = 6;
+
+    fn xdot(&self, t: f64, 
+        x: nalgebra::DVector<f64>, 
+        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+        let thrust = (u[0] + u[1]) * self.propeller_direction().map(|x| x as f64);
+        dvector![
+            x[3],
+            x[4],
+            x[5],
+            thrust.x / self.mass,
+            thrust.y / self.mass + self.gravity,
+            self.prop_dist * (u[0] - u[1]) / self.inertia
+        ]
+    }
+
+    fn y(&self, t: f64, 
+        x: nalgebra::DVector<f64>, 
+        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+        x
+    }
 }
 
 impl System<Vector6<f64>> for BicopterPlant {
-    fn system(&self, _x: f64, y: &Vector6<f64>, dy: &mut Vector6<f64>) {
-        let thrust = (self.l_thrust + self.r_thrust) * self.propeller_direction();
-        dy.x = y.w;
-        dy.y = y.a;
-        dy.z = y.b;
-        dy.w = (thrust.x / self.mass) as f64;
-        dy.a = (thrust.y / self.mass + self.gravity) as f64;
-        dy.b = (self.prop_dist * (self.l_thrust - self.r_thrust) / self.inertia) as f64;
+    fn system(&self, x: f64, y: &Vector6<f64>, dy: &mut Vector6<f64>) {
+        dy.copy_from_slice(self.xdot(x, DVector::from_row_slice(y.as_slice()), dvector![self.l_thrust, self.r_thrust]).as_slice())
     }
 }
 
@@ -44,18 +86,18 @@ impl BicopterPlant {
         
         let left_right = Rotation2::new(std::f32::consts::FRAC_PI_2) * prop_dir;
 
-        let left = self.pos - self.prop_dist/2.0 * left_right;
+        let left = self.pos - self.prop_dist as f32/2.0 * left_right;
 
-        let right =  self.pos() + self.prop_dist/2.0 * left_right;
+        let right =  self.pos() + self.prop_dist as f32/2.0 * left_right;
 
         (left, right)
     }
 
     pub fn thrusts(&self) -> (f32, f32) {
-        (self.l_thrust, self.r_thrust)
+        (self.l_thrust as f32, self.r_thrust as f32)
     }
 
-    pub fn prop_dist(&self) -> f32 {
+    pub fn prop_dist(&self) -> f64 {
         self.prop_dist
     }
 
@@ -94,12 +136,12 @@ impl BicopterPlant {
         //sentido horário!
         angle_rad: f32,
         ang_vel: f32,
-        inertia: f32,
-        mass: f32,
-        gravity: f32,
-        prop_dist: f32,
-        l_thrust: f32,
-        r_thrust:f32
+        inertia: f64,
+        mass: f64,
+        gravity: f64,
+        prop_dist: f64,
+        l_thrust: f64,
+        r_thrust:f64
      ) -> BicopterPlant {
         BicopterPlant {
             pos,
