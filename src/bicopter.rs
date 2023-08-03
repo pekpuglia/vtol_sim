@@ -8,14 +8,14 @@ const HEI: f32 = 480.0;
 mod bicopter_plant;
 
 struct BicopterForceMomentInputReceiver {
-    force_gain: f32,
-    moment_gain: f32,
-    force: f32,
-    moment: f32
+    force_gain: f64,
+    moment_gain: f64,
+    force: f64,
+    moment: f64
 }
 
 impl BicopterForceMomentInputReceiver {
-    fn new(force_gain: f32, moment_gain: f32) -> BicopterForceMomentInputReceiver {
+    fn new(force_gain: f64, moment_gain: f64) -> BicopterForceMomentInputReceiver {
         BicopterForceMomentInputReceiver { 
             force_gain, 
             moment_gain, 
@@ -26,9 +26,9 @@ impl BicopterForceMomentInputReceiver {
     fn set_force_moment(&mut self, ev: &egaku2d::glutin::event::Event<'_, ()>) {
         if let Event::WindowEvent {event: WindowEvent::CursorMoved { device_id: _, position: p, .. }, window_id: _} = ev {
             
-            self.force = self.force_gain * (1.0 - (p.y as f32)/HEI);
+            self.force = self.force_gain * (1.0 - (p.y)/HEI as f64);
 
-            self.moment = self.moment_gain * ((p.x as f32)/WID - 1.0/2.0);
+            self.moment = self.moment_gain * ((p.x)/WID as f64 - 1.0/2.0);
 
         }
     }
