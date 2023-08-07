@@ -1,4 +1,7 @@
+use control_systems::DynamicalSystem;
 use egaku2d::glutin::event::{Event, WindowEvent};
+use nalgebra::{dvector};
+use ode_solvers::{Rk4};
 
 use crate::graphical_utils::*;
 const WID: f32 = 600.0;
@@ -9,54 +12,101 @@ mod bicopter_plant;
 
 struct BicopterForceMomentInputReceiver {
     force_gain: f64,
-    moment_gain: f64,
-    force: f64,
-    moment: f64
+    moment_gain: f64
 }
 
 impl BicopterForceMomentInputReceiver {
     fn new(force_gain: f64, moment_gain: f64) -> BicopterForceMomentInputReceiver {
         BicopterForceMomentInputReceiver { 
             force_gain, 
-            moment_gain, 
-            force: 0.0, 
-            moment: 0.0 }
+            moment_gain}
     }
 
-    fn set_force_moment(&mut self, ev: &egaku2d::glutin::event::Event<'_, ()>) {
+    fn thrusts(&self, ev: &egaku2d::glutin::event::Event<'_, ()>) -> Option<nalgebra::DVector<f64>> {
         if let Event::WindowEvent {event: WindowEvent::CursorMoved { device_id: _, position: p, .. }, window_id: _} = ev {
             
-            self.force = self.force_gain * (1.0 - (p.y)/HEI as f64);
+            let force = self.force_gain * (1.0 - (p.y)/HEI as f64);
 
-            self.moment = self.moment_gain * ((p.x)/WID as f64 - 1.0/2.0);
+            let moment = self.moment_gain * ((p.x)/WID as f64 - 1.0/2.0);
 
+            let l_thrust = force / 2.0 + moment / 2.0;
+            let r_thrust = force / 2.0 - moment / 2.0;
+
+            Some(dvector![l_thrust, r_thrust])
+        } else {
+            None
         }
-    }
-
-    //transformar em HAL
-    fn control_bicopter(&self, bicopter: &mut bicopter_plant::BicopterPlant) {
-        bicopter.l_thrust = self.force / 2.0 + self.moment / (2.0 * bicopter.prop_dist());
-        bicopter.r_thrust = self.force / 2.0 - self.moment / (2.0 * bicopter.prop_dist());
+        
     }
 }
 
-struct Bicopter {
-    plant: bicopter_plant::BicopterPlant,
-    controller: BicopterForceMomentInputReceiver
+struct PlainBicopter {
+    plant: bicopter_plant::BicopterDynamicalModel,
+    //mudar
+    x: nalgebra::DVector<f64>,
+    u: nalgebra::DVector<f64>,
+    input_receiver: BicopterForceMomentInputReceiver
 }
 
-impl Component for Bicopter {
+
+struct SolverInfo {
+    plant: bicopter_plant::BicopterDynamicalModel,
+    u: nalgebra::DVector<f64>
+}
+
+impl ode_solvers::System<ode_solvers::DVector<f64>> for SolverInfo {
+    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
+        dy.copy_from_slice(self.plant.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice())
+    }
+}
+
+impl PlainBicopter {
+    fn new(plant: bicopter_plant::BicopterDynamicalModel, input_receiver: BicopterForceMomentInputReceiver) -> PlainBicopter {
+        PlainBicopter { 
+            plant, 
+            x: dvector![
+                WID as f64/2.0,
+                HEI as f64/2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ], u: dvector![
+                0.0,
+                0.0
+            ], input_receiver }
+    }
+
+    fn update(&mut self, dt: f64) {
+        let mut stepper = Rk4::new(
+            SolverInfo{ plant: self.plant, u: self.u.clone() }, 
+            0.0, 
+            ode_solvers::DVector::from_row_slice(self.x.as_slice()), 
+            dt, 
+            dt/5.0);
+
+        let stats = stepper.integrate();
+
+        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
+    }
+}
+
+impl Component for PlainBicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
         if !paused {
-            self.controller.control_bicopter(&mut self.plant);
-            self.plant.update(dt as f64);
+            self.update(dt as f64);
         }
 
-        let prop_dir = self.plant.propeller_direction();
+        let prop_dir = bicopter_plant::BicopterDynamicalModel::propeller_direction(&self.x).map(|x| x as f32);
 
-       let (left, right) = self.plant.left_right_positions();
+        let (left, right) = {
+            let tmp = self.plant.left_right_positions(&self.x);
 
-        let (l_thrust, r_thrust) = self.plant.thrusts();
+            (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
+        };
+
+        let l_thrust = self.u[0] as f32;
+        let r_thrust = self.u[1] as f32;
 
         //corpo
         canvas
@@ -84,7 +134,10 @@ impl Component for Bicopter {
     }
 
     fn receive_event(&mut self, ev: &egaku2d::glutin::event::Event<'_, ()>) {
-        self.controller.set_force_moment(ev)
+        match self.input_receiver.thrusts(ev) {
+            Some(thrusts) => {self.u = thrusts},
+            None => {},
+        }
     }
 }
 
@@ -98,19 +151,13 @@ pub fn bicopter_main() {
         "test", 
         &ev_loop,
         vec![
-            Box::new(Bicopter{
-                plant:bicopter_plant::BicopterPlant::new(
-                    [WID/2.0,HEI/2.0].into(),
-                    [0.0,0.0].into(),
-                    0.0,
-                    0.0,
-                    1000.0,
-                    1.0,
-                    100.0,
-                    40.0,
-                    0.0,
-                    0.0),
-                controller: BicopterForceMomentInputReceiver::new(200.0, 1000.0) })
+            Box::new(PlainBicopter::new(
+                bicopter_plant::BicopterDynamicalModel::new(
+                    1000.0, 
+                    1.0, 
+                    100.0, 
+                40.0), 
+                BicopterForceMomentInputReceiver { force_gain: 200.0, moment_gain: 25.0 })) 
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
