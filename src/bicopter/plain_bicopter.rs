@@ -1,4 +1,6 @@
 use super::*;
+
+#[derive(Clone)]
 struct BicopterForceMomentInputReceiver {
     force_gain: f64,
     moment_gain: f64
@@ -28,7 +30,7 @@ impl BicopterForceMomentInputReceiver {
         
     }
 }
-
+#[derive(Clone)]
 struct PlainBicopter {
     plant: BicopterDynamicalModel,
     //mudar
@@ -37,13 +39,7 @@ struct PlainBicopter {
     input_receiver: BicopterForceMomentInputReceiver
 }
 
-
-struct SolverInfo {
-    plant: BicopterDynamicalModel,
-    u: nalgebra::DVector<f64>
-}
-
-impl ode_solvers::System<ode_solvers::DVector<f64>> for SolverInfo {
+impl ode_solvers::System<ode_solvers::DVector<f64>> for PlainBicopter {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
         dy.copy_from_slice(self.plant.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice())
     }
@@ -68,7 +64,7 @@ impl PlainBicopter {
 
     fn update(&mut self, dt: f64) {
         let mut stepper = Rk4::new(
-            SolverInfo{ plant: self.plant, u: self.u.clone() }, 
+            self.clone(), 
             0.0, 
             ode_solvers::DVector::from_row_slice(self.x.as_slice()), 
             dt, 
