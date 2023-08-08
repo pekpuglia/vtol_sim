@@ -2,7 +2,7 @@ use super::*;
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
 
-#[derive(new)]
+#[derive(new, Clone)]
 struct BicopterForceAngleInputReceiver {
     force_gain: f64,
     angle_gain: f64
@@ -23,7 +23,7 @@ impl BicopterForceAngleInputReceiver {
     }
 }
 
-#[derive(new)]
+#[derive(new, Clone)]
 struct PDController {
     kp: f64,
     kd: f64
@@ -49,7 +49,7 @@ impl DynamicalSystem for PDController {
     }
 }
 
-#[derive(new)]
+#[derive(new, Clone)]
 struct AngleFeedbackAdapter;
 
 impl DynamicalSystem for AngleFeedbackAdapter {
@@ -72,7 +72,7 @@ impl DynamicalSystem for AngleFeedbackAdapter {
     }
 }
 
-#[derive(new)]
+#[derive(new, Clone)]
 struct AngleFeedbackBicopter {
     plant: NegativeFeedback<Series<PDController, BicopterDynamicalModel>, AngleFeedbackAdapter>,
     #[new(value="dvector![
@@ -92,8 +92,72 @@ struct AngleFeedbackBicopter {
     input_receiver: BicopterForceAngleInputReceiver
 }
 
+impl ode_solvers::System<ode_solvers::DVector<f64>> for AngleFeedbackBicopter {
+    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
+        dy.copy_from_slice(self.plant.xdot(
+            x, 
+            nalgebra::DVector::from_row_slice(y.as_slice()), 
+            self.u.clone()).as_slice())
+    }
+}
+
 impl AngleFeedbackBicopter {
     fn update(&mut self, dt: f64) {
-        
+        let mut stepper = Rk4::new(
+            self.clone(),
+            0.0,
+            ode_solvers::DVector::from_row_slice(self.x.as_slice()),
+            dt,
+            dt/5.0
+        );
+    }
+}
+
+impl Component for AngleFeedbackBicopter {
+    fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
+        if !paused {
+            self.update(dt as f64);
+        }
+
+        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x).map(|x| x as f32);
+
+        let (left, right) = {
+            let tmp = self.plant.left_right_positions(&self.x);
+
+            (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
+        };
+
+        let l_thrust = self.u[0] as f32;
+        let r_thrust = self.u[1] as f32;
+
+        //corpo
+        canvas
+            .lines(5.0)
+            .add(left.into(),right.into())
+            .send_and_uniforms(canvas)
+            .with_color([1.0, 1.0, 1.0, 1.0])
+            .draw();
+
+        //empuxos
+        canvas
+            .arrows(2.0)
+            .add(left.into(), (left + 0.7 * l_thrust * prop_dir).into())
+            .send_and_uniforms(canvas)
+            .with_color([1.0, 0.0, 0.0, 1.0])
+            .draw();
+
+        canvas
+            .arrows(2.0)
+            .add(right.into(), (right + 0.7 * r_thrust * prop_dir).into())
+            .send_and_uniforms(canvas)
+            .with_color([0.0, 0.0, 1.0, 1.0])
+            .draw();
+    }
+
+    fn receive_event(&mut self, ev: &Event<'_, ()>) {
+        match self.input_receiver.targets(ev) {
+            Some(targets) => {self.u = targets},
+            None => {},
+        }
     }
 }
