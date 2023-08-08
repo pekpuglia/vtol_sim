@@ -1,6 +1,6 @@
 use nalgebra::{Vector2, dvector, Rotation2};
 
-use control_systems::DynamicalSystem;
+pub use control_systems::DynamicalSystem;
 
 #[derive(Clone, Copy)]
 pub struct BicopterDynamicalModel {
