@@ -142,7 +142,7 @@ pub fn bicopter_main() {
                     1.0, 
                     100.0, 
                 40.0), 
-                BicopterForceMomentInputReceiver { force_gain: 200.0, moment_gain: 25.0 })) 
+                BicopterForceMomentInputReceiver::new(200.0, 25.0 ))) 
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
