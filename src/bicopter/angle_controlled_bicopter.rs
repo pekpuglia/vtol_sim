@@ -16,7 +16,7 @@ impl BicopterForceAngleInputReceiver {
 
             let angle = self.angle_gain * ((p.x)/WID as f64 - 1.0/2.0);
 
-            Some(dvector![force, angle])
+            Some(dvector![force, angle, 0.0])
         } else {
             None
         }
@@ -26,36 +26,13 @@ impl BicopterForceAngleInputReceiver {
 #[derive(new, Clone)]
 struct PDController {
     kp: f64,
-    kd: f64
+    kd: f64,
 }
 
 impl DynamicalSystem for PDController {
     const STATE_VECTOR_SIZE: usize = 0;
 
-    const INPUT_SIZE      : usize = 2;
-
-    const OUTPUT_SIZE     : usize = 2;
-
-    fn xdot(&self, t: f64, 
-        x: nalgebra::DVector<f64>, 
-        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        todo!()
-    }
-
-    fn y(&self, t: f64, 
-        x: nalgebra::DVector<f64>, 
-        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        todo!()
-    }
-}
-
-#[derive(new, Clone)]
-struct AngleFeedbackAdapter;
-
-impl DynamicalSystem for AngleFeedbackAdapter {
-    const STATE_VECTOR_SIZE: usize = 0;
-
-    const INPUT_SIZE      : usize = 6;
+    const INPUT_SIZE      : usize = 3;
 
     const OUTPUT_SIZE     : usize = 2;
 
@@ -68,7 +45,41 @@ impl DynamicalSystem for AngleFeedbackAdapter {
     fn y(&self, t: f64, 
         x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        dvector![0.0, x[2]]
+        let force = u[0];
+
+        let theta_error = u[1];
+        let theta_dot = u[2];
+
+        let moment = self.kp * theta_error + self.kd * theta_dot;
+        dbg!(moment);
+        let l_thrust = force / 2.0 + moment / 2.0;
+        let r_thrust = force / 2.0 - moment / 2.0;
+
+        dvector![l_thrust, r_thrust]
+    }
+}
+
+#[derive(new, Clone)]
+struct AngleFeedbackAdapter;
+
+impl DynamicalSystem for AngleFeedbackAdapter {
+    const STATE_VECTOR_SIZE: usize = 0;
+
+    const INPUT_SIZE      : usize = 6;
+
+    const OUTPUT_SIZE     : usize = 3;
+
+    fn xdot(&self, t: f64, 
+        x: nalgebra::DVector<f64>, 
+        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+        dvector![]
+    }
+
+    fn y(&self, t: f64, 
+        x: nalgebra::DVector<f64>, 
+        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+        //força, angulo, v ang
+        dvector![0.0, u[2], u[5]]
     }
 }
 
@@ -110,6 +121,10 @@ impl AngleFeedbackBicopter {
             dt,
             dt/5.0
         );
+
+        let stats = stepper.integrate();
+
+        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
     }
 }
 
@@ -122,13 +137,15 @@ impl Component for AngleFeedbackBicopter {
         let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x).map(|x| x as f32);
 
         let (left, right) = {
-            let tmp = self.plant.left_right_positions(&self.x);
+            let tmp = self.plant.dir_ref().ds2_ref().left_right_positions(&self.x);
 
             (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
         };
 
-        let l_thrust = self.u[0] as f32;
-        let r_thrust = self.u[1] as f32;
+        let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, self.x.clone(), self.u.clone());
+
+        let l_thrust = thrusts[0] as f32;
+        let r_thrust = thrusts[1] as f32;
 
         //corpo
         canvas
@@ -160,4 +177,34 @@ impl Component for AngleFeedbackBicopter {
             None => {},
         }
     }
+}
+
+pub fn bicopter_main() {
+    let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
+
+    let mut drawer = Drawer::new(
+        60, 
+        WID as usize, 
+        HEI as usize, 
+        "test", 
+        &ev_loop,
+        vec![
+            Box::new(AngleFeedbackBicopter::new(
+                NegativeFeedback::new(
+                    Series::new(
+                        PDController { kp: 100.0, kd: 0.0 },
+                        BicopterDynamicalModel::new(
+                            1000.0, 
+                            1.0, 
+                            000.0, 
+                            40.0
+                        )
+                    ), 
+                    AngleFeedbackAdapter::new()
+                ),
+                BicopterForceAngleInputReceiver { force_gain: 0.0, angle_gain: std::f64::consts::FRAC_PI_6}
+            ))
+        ]);
+
+    ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
 }

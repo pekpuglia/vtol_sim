@@ -16,5 +16,5 @@ mod bicopter;
 //add plane
 //add vtol
 fn main() {
-    bicopter::plain_bicopter::bicopter_main()
+    bicopter::angle_controlled_bicopter::bicopter_main()
 }
