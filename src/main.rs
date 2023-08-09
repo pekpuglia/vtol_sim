@@ -8,7 +8,6 @@ mod bicopter;
 
 //todo
 //abstract controller
-//dynamical systems modelling
 //add config file
 //add ui with control options
 //add background
