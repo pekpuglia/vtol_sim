@@ -15,7 +15,6 @@ impl BicopterForceAngleInputReceiver {
             let force = self.force_gain * (1.0 - (p.y)/HEI as f64);
 
             let angle = self.angle_gain * ((p.x)/WID as f64 - 1.0/2.0);
-
             Some(dvector![force, angle, 0.0])
         } else {
             None
@@ -49,9 +48,7 @@ impl DynamicalSystem for PDController {
 
         let theta_error = u[1];
         let theta_dot = u[2];
-
         let moment = self.kp * theta_error + self.kd * theta_dot;
-        dbg!(moment);
         let l_thrust = force / 2.0 + moment / 2.0;
         let r_thrust = force / 2.0 - moment / 2.0;
 
@@ -132,6 +129,7 @@ impl Component for AngleFeedbackBicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
         if !paused {
             self.update(dt as f64);
+
         }
 
         let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x).map(|x| x as f32);
@@ -142,7 +140,10 @@ impl Component for AngleFeedbackBicopter {
             (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
         };
 
-        let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, self.x.clone(), self.u.clone());
+        //errado! falta subtrair o feedback
+        let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
+        let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
+        let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
 
         let l_thrust = thrusts[0] as f32;
         let r_thrust = thrusts[1] as f32;
@@ -192,17 +193,17 @@ pub fn bicopter_main() {
             Box::new(AngleFeedbackBicopter::new(
                 NegativeFeedback::new(
                     Series::new(
-                        PDController { kp: 100.0, kd: 0.0 },
+                        PDController { kp: 1000.0, kd: 2000.0 },
                         BicopterDynamicalModel::new(
                             1000.0, 
                             1.0, 
-                            000.0, 
+                            100.0, 
                             40.0
                         )
                     ), 
                     AngleFeedbackAdapter::new()
                 ),
-                BicopterForceAngleInputReceiver { force_gain: 0.0, angle_gain: std::f64::consts::FRAC_PI_6}
+                BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: std::f64::consts::FRAC_PI_2}
             ))
         ]);
 
