@@ -35,14 +35,14 @@ impl DynamicalSystem for PDController {
 
     const OUTPUT_SIZE     : usize = 2;
 
-    fn xdot(&self, t: f64, 
-        x: nalgebra::DVector<f64>, 
-        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+    fn xdot(&self, _t: f64, 
+        _x: nalgebra::DVector<f64>, 
+        _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         dvector![]
     }
 
-    fn y(&self, t: f64, 
-        x: nalgebra::DVector<f64>, 
+    fn y(&self, _t: f64, 
+        _x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         let force = u[0];
 
@@ -66,14 +66,14 @@ impl DynamicalSystem for AngleFeedbackAdapter {
 
     const OUTPUT_SIZE     : usize = 3;
 
-    fn xdot(&self, t: f64, 
-        x: nalgebra::DVector<f64>, 
-        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+    fn xdot(&self, _t: f64, 
+        _x: nalgebra::DVector<f64>, 
+        _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         dvector![]
     }
 
-    fn y(&self, t: f64, 
-        x: nalgebra::DVector<f64>, 
+    fn y(&self, _t: f64, 
+        _x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         //força, angulo, v ang
         dvector![0.0, u[2], u[5]]
@@ -119,7 +119,7 @@ impl AngleFeedbackBicopter {
             dt/5.0
         );
 
-        let stats = stepper.integrate();
+        let _stats = stepper.integrate();
 
         self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
     }
@@ -140,7 +140,6 @@ impl Component for AngleFeedbackBicopter {
             (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
         };
 
-        //errado! falta subtrair o feedback
         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
         let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
