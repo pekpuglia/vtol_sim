@@ -4,8 +4,11 @@
 //world frame (0,0) configurável, x p direita, y p esquerda
 //etc
 
+use std::cell::Ref;
+
 use nalgebra::{Vector2, Matrix2};
 
+#[derive(Clone, Copy, Debug)]
 pub struct ReferenceFrame {
     x_unit_vector_screen_frame: Vector2<f64>,
     y_unit_vector_screen_frame: Vector2<f64>,
@@ -90,11 +93,13 @@ pub enum GeometryTypes {
 #[derive(derive_new::new)]
 pub struct Geometry {
     color: [f32; 4],
+    ref_frame: ReferenceFrame,
     geom_type: GeometryTypes
 }
 
 impl Geometry {
     pub fn draw(&self, canvas: &mut egaku2d::SimpleCanvas) {
+        let screen_geometry = ();
         match self.geom_type {
             GeometryTypes::Circle { center, radius } => {
                 canvas
@@ -127,6 +132,26 @@ impl Geometry {
                 .send_and_uniforms(canvas)
                 .with_color(self.color)
                 .draw();
+            },
+        }
+    }
+
+    //exige que novo referencial seja isométrico
+    fn to_frame(&self, dest: &ReferenceFrame) -> Geometry {
+        Geometry {
+            color: self.color,
+            ref_frame: *dest,
+            geom_type: match self.geom_type {
+                GeometryTypes::Circle { center, radius } => {
+                    GeometryTypes::Circle { center: center.to_frame(&self.ref_frame, dest), radius }
+                },
+                GeometryTypes::AARect { lower, upper } => todo!(),
+                GeometryTypes::Line { p1, p2, thickness } => {
+                    GeometryTypes::Line { p1: p1.to_frame(&self.ref_frame, dest), p2: p2.to_frame(&self.ref_frame, dest), thickness }
+                },
+                GeometryTypes::Arrow { start, end, thickness } => {
+                    GeometryTypes::Arrow { start: start.to_frame(&self.ref_frame, dest), end: end.to_frame(&self.ref_frame, dest), thickness }
+                },
             },
         }
     }
