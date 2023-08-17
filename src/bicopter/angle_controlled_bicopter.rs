@@ -1,5 +1,5 @@
 use super::*;
-use crate::world;
+use crate::world::{self, SCREEN_FRAME};
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
 
@@ -147,6 +147,7 @@ impl Component for AngleFeedbackBicopter {
 
         world::Geometry::new(
             [1.0,1.0,1.0,1.0], 
+            SCREEN_FRAME,
             world::GeometryTypes::new_line(
                 left, 
                 right, 
@@ -156,6 +157,7 @@ impl Component for AngleFeedbackBicopter {
         //empuxos
         world::Geometry::new(
             [1.0, 0.0, 0.0, 1.0], 
+            SCREEN_FRAME,
             world::GeometryTypes::new_arrow(
                 left.into(), 
                 (left + 0.7 * l_thrust * prop_dir).into(), 
@@ -164,6 +166,7 @@ impl Component for AngleFeedbackBicopter {
 
         world::Geometry::new(
             [0.0, 0.0, 1.0, 1.0], 
+            SCREEN_FRAME,
             world::GeometryTypes::new_arrow(
                 right.into(), 
                 (right + 0.7 * r_thrust * prop_dir).into(), 
