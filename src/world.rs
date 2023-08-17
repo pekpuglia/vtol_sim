@@ -68,21 +68,21 @@ mod test_frame_conversion {
 #[derive(derive_new::new)]
 pub enum GeometryTypes {
     Circle{
-        center: [f32; 2],
+        center: Vector2<f64>,
         radius: f32
     },
     AARect{
-        lower: [f32; 2],
-        upper: [f32; 2]
+        lower: Vector2<f64>,
+        upper: Vector2<f64>
     },
     Line{
-        p1: [f32; 2],
-        p2: [f32; 2],
+        p1: Vector2<f64>,
+        p2: Vector2<f64>,
         thickness: f32
     },
     Arrow{
-        start: [f32; 2],
-        end: [f32; 2],
+        start: Vector2<f64>,
+        end: Vector2<f64>,
         thickness: f32
     }
 }
@@ -99,7 +99,7 @@ impl Geometry {
             GeometryTypes::Circle { center, radius } => {
                 canvas
                     .circles()
-                    .add(center)
+                    .add(center.map(|x| x as f32).into())
                     .send_and_uniforms(canvas, radius)
                     .with_color(self.color)
                     .draw();
@@ -107,7 +107,7 @@ impl Geometry {
             GeometryTypes::AARect { lower, upper } => {
                 canvas
                     .rects()
-                    .add([lower[0], lower[1], upper[0], upper[1]])
+                    .add([lower[0] as f32, lower[1] as f32, upper[0] as f32, upper[1] as f32])
                     .send_and_uniforms(canvas)
                     .with_color(self.color)
                     .draw();
@@ -115,7 +115,7 @@ impl Geometry {
             GeometryTypes::Line { p1, p2, thickness } => {
                 canvas
                     .lines(thickness)
-                    .add(p1, p2)
+                    .add(p1.map(|x| x as f32).into(), p2.map(|x| x as f32).into())
                     .send_and_uniforms(canvas)
                     .with_color(self.color)
                     .draw();
@@ -123,7 +123,7 @@ impl Geometry {
             GeometryTypes::Arrow { start, end, thickness } => {
                 canvas
                 .arrows(thickness)
-                .add(start, end)
+                .add(start.map(|x| x as f32).into(), end.map(|x| x as f32).into())
                 .send_and_uniforms(canvas)
                 .with_color(self.color)
                 .draw();

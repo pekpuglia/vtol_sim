@@ -133,26 +133,23 @@ impl Component for AngleFeedbackBicopter {
 
         }
 
-        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x).map(|x| x as f32);
+        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x);
 
-        let (left, right) = {
-            let tmp = self.plant.dir_ref().ds2_ref().left_right_positions(&self.x);
+        let (left, right) = self.plant.dir_ref().ds2_ref().left_right_positions(&self.x);
 
-            (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
-        };
 
         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
         let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
 
-        let l_thrust = thrusts[0] as f32;
-        let r_thrust = thrusts[1] as f32;
+        let l_thrust = thrusts[0];
+        let r_thrust = thrusts[1];
 
         world::Geometry::new(
             [1.0,1.0,1.0,1.0], 
             world::GeometryTypes::new_line(
-                left.into(), 
-                right.into(), 
+                left, 
+                right, 
                 5.0)
         ).draw(canvas);
 
