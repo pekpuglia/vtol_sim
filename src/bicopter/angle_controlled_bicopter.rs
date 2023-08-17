@@ -1,4 +1,5 @@
 use super::*;
+use crate::world;
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
 
@@ -147,28 +148,30 @@ impl Component for AngleFeedbackBicopter {
         let l_thrust = thrusts[0] as f32;
         let r_thrust = thrusts[1] as f32;
 
-        //corpo
-        canvas
-            .lines(5.0)
-            .add(left.into(),right.into())
-            .send_and_uniforms(canvas)
-            .with_color([1.0, 1.0, 1.0, 1.0])
-            .draw();
+        world::Geometry::new(
+            [1.0,1.0,1.0,1.0], 
+            world::GeometryTypes::new_line(
+                left.into(), 
+                right.into(), 
+                5.0)
+        ).draw(canvas);
 
         //empuxos
-        canvas
-            .arrows(2.0)
-            .add(left.into(), (left + 0.7 * l_thrust * prop_dir).into())
-            .send_and_uniforms(canvas)
-            .with_color([1.0, 0.0, 0.0, 1.0])
-            .draw();
+        world::Geometry::new(
+            [1.0, 0.0, 0.0, 1.0], 
+            world::GeometryTypes::new_arrow(
+                left.into(), 
+                (left + 0.7 * l_thrust * prop_dir).into(), 
+                2.0)
+        ).draw(canvas);
 
-        canvas
-            .arrows(2.0)
-            .add(right.into(), (right + 0.7 * r_thrust * prop_dir).into())
-            .send_and_uniforms(canvas)
-            .with_color([0.0, 0.0, 1.0, 1.0])
-            .draw();
+        world::Geometry::new(
+            [0.0, 0.0, 1.0, 1.0], 
+            world::GeometryTypes::new_arrow(
+                right.into(), 
+                (right + 0.7 * r_thrust * prop_dir).into(), 
+                2.0)
+        ).draw(canvas);
     }
 
     fn receive_event(&mut self, ev: &Event<'_, ()>) {
