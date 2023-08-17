@@ -1,5 +1,5 @@
 use nalgebra::{Vector2, dvector, Rotation2};
-
+use crate::world::{ReferenceFrame, Geometry};
 pub use control_systems::DynamicalSystem;
 
 #[derive(Clone, Copy)]
@@ -29,6 +29,18 @@ impl BicopterDynamicalModel {
         let left = Vector2::new(x[0], x[1]) - self.prop_dist/2.0 * left_right;
         let right = Vector2::new(x[0], x[1]) + self.prop_dist/2.0 * left_right;
         (left, right)
+    }
+
+    pub fn body_centered_frame(x: &nalgebra::DVector<f64>) -> ReferenceFrame {
+        // let prop_dir = BicopterDynamicalModel::propeller_direction(x);
+        ReferenceFrame::new_from_screen_frame(
+            &Vector2::new(x[2].cos(), x[2].sin()), 
+            &Vector2::new(x[2].sin(), -x[2].cos()),
+            &Vector2::new(x[0], x[1]))
+    }
+
+    pub fn body_centered_geometry(&self, l_thrust: f64, r_thrust: f64) -> Vec<Geometry> {
+        todo!()
     }
 }
 
