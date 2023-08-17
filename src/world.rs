@@ -6,19 +6,19 @@
 
 use nalgebra::{Vector2, Matrix2};
 
-struct ReferenceFrame {
+pub struct ReferenceFrame {
     x_unit_vector_screen_frame: Vector2<f64>,
     y_unit_vector_screen_frame: Vector2<f64>,
     origin_screen_frame: Vector2<f64>
 }
 
-const SCREEN_FRAME: ReferenceFrame = ReferenceFrame{ 
+pub const SCREEN_FRAME: ReferenceFrame = ReferenceFrame{ 
     x_unit_vector_screen_frame: Vector2::new(1.0, 0.0), 
     y_unit_vector_screen_frame: Vector2::new(0.0, 1.0), 
     origin_screen_frame: Vector2::new(0.0, 0.0) };
 
 impl ReferenceFrame {
-    fn new_from_screen_frame(x_vector: &Vector2<f64>, y_vector: &Vector2<f64>, origin: &Vector2<f64>) -> ReferenceFrame {
+    pub fn new_from_screen_frame(x_vector: &Vector2<f64>, y_vector: &Vector2<f64>, origin: &Vector2<f64>) -> ReferenceFrame {
         ReferenceFrame {
             x_unit_vector_screen_frame: x_vector.normalize(),
             y_unit_vector_screen_frame: y_vector.normalize(),
@@ -34,7 +34,7 @@ impl From<&ReferenceFrame> for Matrix2<f64> {
     }
 }
 
-trait ConvertToFrame {
+pub trait ConvertToFrame {
     fn to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self;
 }
 
