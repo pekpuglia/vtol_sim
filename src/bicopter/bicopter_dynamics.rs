@@ -1,5 +1,5 @@
 use nalgebra::{Vector2, dvector, Rotation2};
-use crate::world::{ReferenceFrame, Geometry};
+use crate::world::{ReferenceFrame, Geometry, self};
 pub use control_systems::DynamicalSystem;
 
 #[derive(Clone, Copy)]
@@ -39,8 +39,38 @@ impl BicopterDynamicalModel {
             &Vector2::new(x[0], x[1]))
     }
 
-    pub fn body_centered_geometry(&self, l_thrust: f64, r_thrust: f64) -> Vec<Geometry> {
-        todo!()
+    pub fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>) -> Vec<Geometry> {
+        let frame = BicopterDynamicalModel::body_centered_frame(x);
+        let left = Vector2::new(-self.prop_dist/2.0, 0.0);
+        let right = Vector2::new(self.prop_dist/2.0, 0.0);
+
+
+        vec![
+            world::Geometry::new(
+                [1.0,1.0,1.0,1.0], 
+                frame,
+                world::GeometryTypes::new_line(
+                    left, 
+                    right, 
+                    5.0)
+            ),
+            world::Geometry::new(
+                [1.0, 0.0, 0.0, 1.0], 
+                frame,
+                world::GeometryTypes::new_arrow(
+                    left, 
+                    (left + 0.7 * u[0] * Vector2::y()).into(), 
+                    2.0)
+            ),
+            world::Geometry::new(
+                [0.0, 0.0, 1.0, 1.0], 
+                frame,
+                world::GeometryTypes::new_arrow(
+                    right.into(), 
+                    (right + 0.7 * u[1] * Vector2::y()).into(), 
+                    2.0)
+            )
+        ]
     }
 }
 

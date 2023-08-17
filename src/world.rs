@@ -99,8 +99,8 @@ pub struct Geometry {
 
 impl Geometry {
     pub fn draw(&self, canvas: &mut egaku2d::SimpleCanvas) {
-        let screen_geometry = ();
-        match self.geom_type {
+        let screen_geometry = self.to_frame(&SCREEN_FRAME);
+        match screen_geometry.geom_type {
             GeometryTypes::Circle { center, radius } => {
                 canvas
                     .circles()

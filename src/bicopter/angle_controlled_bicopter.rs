@@ -133,45 +133,17 @@ impl Component for AngleFeedbackBicopter {
 
         }
 
-        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x);
-
-        let (left, right) = self.plant.dir_ref().ds2_ref().left_right_positions(&self.x);
-
-
         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
         let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
 
-        let l_thrust = thrusts[0];
-        let r_thrust = thrusts[1];
-
-        world::Geometry::new(
-            [1.0,1.0,1.0,1.0], 
-            SCREEN_FRAME,
-            world::GeometryTypes::new_line(
-                left, 
-                right, 
-                5.0)
-        ).draw(canvas);
-
-        //empuxos
-        world::Geometry::new(
-            [1.0, 0.0, 0.0, 1.0], 
-            SCREEN_FRAME,
-            world::GeometryTypes::new_arrow(
-                left.into(), 
-                (left + 0.7 * l_thrust * prop_dir).into(), 
-                2.0)
-        ).draw(canvas);
-
-        world::Geometry::new(
-            [0.0, 0.0, 1.0, 1.0], 
-            SCREEN_FRAME,
-            world::GeometryTypes::new_arrow(
-                right.into(), 
-                (right + 0.7 * r_thrust * prop_dir).into(), 
-                2.0)
-        ).draw(canvas);
+        self.plant
+            .dir_ref()
+            .ds2_ref()
+            .body_centered_geometry(&self.x, &thrusts)
+            .iter()
+            .map(|geom| geom.draw(canvas))
+            .last();
     }
 
     fn receive_event(&mut self, ev: &Event<'_, ()>) {
