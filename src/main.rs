@@ -7,13 +7,13 @@ mod bicopter;
 //obs: player controller != (feedback) controller
 
 //todo
-//abstract controller
+//refactor module hierarchy
 //add config file
 //add ui with control options
-//add background
-//add camera
+//add world, background, camera
 //add plane
 //add vtol
+//add rocket
 fn main() {
     bicopter::angle_controlled_bicopter::bicopter_main()
 }
