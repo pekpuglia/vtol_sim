@@ -7,9 +7,9 @@ use nalgebra::{Vector2, Matrix2};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ReferenceFrame {
-    x_unit_vector_screen_frame: Vector2<f64>,
-    y_unit_vector_screen_frame: Vector2<f64>,
-    origin_screen_frame: Vector2<f64>
+    pub x_unit_vector_screen_frame: Vector2<f64>,
+    pub y_unit_vector_screen_frame: Vector2<f64>,
+    pub origin_screen_frame: Vector2<f64>
 }
 
 pub const SCREEN_FRAME: ReferenceFrame = ReferenceFrame{ 
@@ -109,7 +109,7 @@ impl Geometry {
             GeometryTypes::AARect { lower, upper } => {
                 canvas
                     .rects()
-                    .add([lower[0] as f32, lower[1] as f32, upper[0] as f32, upper[1] as f32])
+                    .add([lower[0] as f32, upper[0] as f32, lower[1] as f32, upper[1] as f32])
                     .send_and_uniforms(canvas)
                     .with_color(self.color)
                     .draw();
@@ -142,7 +142,9 @@ impl Geometry {
                 GeometryTypes::Circle { center, radius } => {
                     GeometryTypes::Circle { center: center.to_frame(&self.ref_frame, dest), radius }
                 },
-                GeometryTypes::AARect { lower, upper } => todo!(),
+                GeometryTypes::AARect { lower, upper } => {
+                    GeometryTypes::AARect { lower: lower.to_frame(&self.ref_frame, dest), upper: upper.to_frame(&self.ref_frame, dest) }
+                },
                 GeometryTypes::Line { p1, p2, thickness } => {
                     GeometryTypes::Line { p1: p1.to_frame(&self.ref_frame, dest), p2: p2.to_frame(&self.ref_frame, dest), thickness }
                 },
