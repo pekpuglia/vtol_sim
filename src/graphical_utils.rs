@@ -45,10 +45,6 @@ impl Component for World {
         let y_start_index = (screen_origin.y-self.screen_height).div(self.tile_size).floor() as i32;
         let y_end_index = (screen_origin.y).div(self.tile_size).ceil() as i32;
         
-        // for x_i in (x_start_index..x_end_index) {
-
-        // }
-        
         Range{ start: x_start_index, end: x_end_index}
             .flat_map(
                 |x_el| Range{ start: y_start_index, end: y_end_index }.map(move |y_el| (x_el, y_el)))
