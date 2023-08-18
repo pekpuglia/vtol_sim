@@ -1,5 +1,5 @@
 mod graphical_utils;
-mod world;
+mod reference_frame;
 mod ball;
 mod math_helpers;
 

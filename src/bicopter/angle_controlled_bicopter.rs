@@ -1,5 +1,5 @@
 use super::*;
-use crate::world::{self, SCREEN_FRAME};
+use crate::reference_frame::{self, SCREEN_FRAME};
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
 

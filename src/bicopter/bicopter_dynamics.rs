@@ -1,5 +1,5 @@
 use nalgebra::{Vector2, dvector, Rotation2};
-use crate::world::{ReferenceFrame, Geometry, self};
+use crate::reference_frame::{ReferenceFrame, Geometry, self};
 pub use control_systems::DynamicalSystem;
 
 #[derive(Clone, Copy)]
@@ -46,26 +46,26 @@ impl BicopterDynamicalModel {
 
 
         vec![
-            world::Geometry::new(
+            reference_frame::Geometry::new(
                 [1.0,1.0,1.0,1.0], 
                 frame,
-                world::GeometryTypes::new_line(
+                reference_frame::GeometryTypes::new_line(
                     left, 
                     right, 
                     5.0)
             ),
-            world::Geometry::new(
+            reference_frame::Geometry::new(
                 [1.0, 0.0, 0.0, 1.0], 
                 frame,
-                world::GeometryTypes::new_arrow(
+                reference_frame::GeometryTypes::new_arrow(
                     left, 
                     (left + 0.7 * u[0] * Vector2::y()).into(), 
                     2.0)
             ),
-            world::Geometry::new(
+            reference_frame::Geometry::new(
                 [0.0, 0.0, 1.0, 1.0], 
                 frame,
-                world::GeometryTypes::new_arrow(
+                reference_frame::GeometryTypes::new_arrow(
                     right.into(), 
                     (right + 0.7 * u[1] * Vector2::y()).into(), 
                     2.0)
