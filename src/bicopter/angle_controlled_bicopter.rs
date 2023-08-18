@@ -1,6 +1,7 @@
 use super::*;
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
+use nalgebra::Vector2;
 
 #[derive(new, Clone)]
 struct BicopterForceAngleInputReceiver {
@@ -163,6 +164,13 @@ pub fn bicopter_main() {
         "test", 
         &ev_loop,
         vec![
+            Box::new(World::new(
+                Vector2::new(200.0,0.0), 
+                10.0, 
+                [1.0,0.0,0.0,0.3], 
+                [0.0,1.0,0.0,0.3], 
+                WID.into(), 
+                HEI.into())),
             Box::new(AngleFeedbackBicopter::new(
                 NegativeFeedback::new(
                     Series::new(
