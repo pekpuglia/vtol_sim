@@ -1,6 +1,6 @@
 use std::ops::{Div, Range};
 
-use crate::{reference_frame::ReferenceFrame, geometry::{Geometry, GeometryTypes}};
+use crate::{reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME}, geometry::{Geometry, GeometryTypes}};
 use nalgebra::Vector2;
 use crate::graphical_utils::{Component, SimpleCanvas, Event};
 pub struct Background {
@@ -30,13 +30,12 @@ impl Background {
 
 impl Component for Background {    
     fn draw(&mut self, canvas: &mut SimpleCanvas, _dt: f32, _paused: bool) {
-        let screen_origin = -self.ref_frame.origin_screen_frame;
-
+        let screen_origin = -self.ref_frame.origin_screen_frame.direction_to_frame(&SCREEN_FRAME, &self.ref_frame);
         let x_start_index = (screen_origin.x / self.tile_size).floor() as i32;
-        let x_end_index = (screen_origin.x + self.screen_width).div(self.tile_size).ceil() as i32;
+        let x_end_index   = (screen_origin.x + self.screen_width).div(self.tile_size).ceil() as i32;
 
         let y_start_index = (screen_origin.y-self.screen_height).div(self.tile_size).floor() as i32;
-        let y_end_index = (screen_origin.y).div(self.tile_size).ceil() as i32;
+        let y_end_index   = (screen_origin.y).div(self.tile_size).ceil() as i32;
         
         Range{ start: x_start_index, end: x_end_index}
             .flat_map(
