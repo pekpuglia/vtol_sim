@@ -1,4 +1,4 @@
-use crate::{background::Background, reference_frame::{ReferenceFrame, SCREEN_FRAME}};
+use crate::{background::Background, reference_frame::ReferenceFrame};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series};
