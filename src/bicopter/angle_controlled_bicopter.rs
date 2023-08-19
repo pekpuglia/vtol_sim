@@ -165,8 +165,8 @@ pub fn bicopter_main() {
         &ev_loop,
         vec![
             Box::new(World::new(
-                Vector2::new(200.0,0.0), 
-                10.0, 
+                Vector2::new(0.0,0.0), 
+                100.0, 
                 [1.0,0.0,0.0,0.3], 
                 [0.0,1.0,0.0,0.3], 
                 WID.into(), 
