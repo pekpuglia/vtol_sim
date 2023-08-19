@@ -26,6 +26,12 @@ impl ReferenceFrame {
         }
     }
 
+    pub fn new_from_frame(x_vector: &Vector2<f64>, y_vector: &Vector2<f64>, origin: &Vector2<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
+        ReferenceFrame { 
+            x_unit_vector_screen_frame: x_vector.normalize().to_frame(ref_frame, &SCREEN_FRAME), 
+            y_unit_vector_screen_frame: y_vector.normalize().to_frame(ref_frame, &SCREEN_FRAME), 
+            origin_screen_frame: origin.to_frame(ref_frame, &SCREEN_FRAME) }
+    }
 }
 
 impl From<&ReferenceFrame> for Matrix2<f64> {
