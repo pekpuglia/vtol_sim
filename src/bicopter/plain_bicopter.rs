@@ -70,7 +70,7 @@ impl PlainBicopter {
             dt, 
             dt/5.0);
 
-        let stats = stepper.integrate();
+        let _stats = stepper.integrate();
 
         self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
     }

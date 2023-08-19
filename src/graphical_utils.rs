@@ -1,12 +1,17 @@
-use std::{time::Instant, ops::{Div, Range}};
+use std::time::Instant;
 
-use egaku2d::glutin::{event::{WindowEvent, VirtualKeyCode, ElementState, MouseButton}, event_loop::{ControlFlow, EventLoop}};
+use egaku2d::glutin::{
+    event::{
+        WindowEvent, 
+        VirtualKeyCode, 
+        ElementState, 
+        MouseButton
+    }, event_loop::{
+        ControlFlow, 
+        EventLoop}};
+
 pub use egaku2d::SimpleCanvas;
 pub use egaku2d::glutin::event::Event;
-use nalgebra::Vector2;
-
-use crate::reference_frame::ReferenceFrame;
-use crate::geometry::{Geometry, GeometryTypes};
 
 pub trait Component {
     fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool);

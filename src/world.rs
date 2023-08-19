@@ -29,7 +29,7 @@ impl World {
 }
 
 impl Component for World {    
-    fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool) {
+    fn draw(&mut self, canvas: &mut SimpleCanvas, _dt: f32, _paused: bool) {
         let screen_origin = -self.ref_frame.origin_screen_frame;
 
         let x_start_index = (screen_origin.x / self.tile_size).floor() as i32;
@@ -54,6 +54,6 @@ impl Component for World {
             ).last();
     }
 
-    fn receive_event(&mut self, ev: &Event<'_, ()>) {
+    fn receive_event(&mut self, _ev: &Event<'_, ()>) {
     }
 }
