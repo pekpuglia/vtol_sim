@@ -11,7 +11,7 @@ mod bicopter;
 //refactor module hierarchy
 //add config file
 //add ui with control options
-//add world, background, camera
+//add world, camera
 //add plane
 //add vtol
 //add rocket
