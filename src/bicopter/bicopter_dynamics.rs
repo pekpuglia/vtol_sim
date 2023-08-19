@@ -1,4 +1,4 @@
-use nalgebra::{Vector2, dvector, Rotation2};
+use nalgebra::{Vector2, dvector, Rotation2, Matrix2};
 use crate::reference_frame::ReferenceFrame;
 use crate::geometry::{Geometry, GeometryTypes};
 pub use control_systems::DynamicalSystem;
@@ -32,16 +32,17 @@ impl BicopterDynamicalModel {
         (left, right)
     }
 
-    pub fn body_centered_frame(x: &nalgebra::DVector<f64>) -> ReferenceFrame {
-        // let prop_dir = BicopterDynamicalModel::propeller_direction(x);
-        ReferenceFrame::new_from_screen_frame(
+    pub fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
+        let sign = Matrix2::<f64>::from(ref_frame).determinant().signum();
+        ReferenceFrame::new_from_frame(
             &Vector2::new(x[2].cos(), x[2].sin()), 
-            &Vector2::new(x[2].sin(), -x[2].cos()),
-            &Vector2::new(x[0], x[1]))
+            & (sign * Vector2::new(x[2].sin(), -x[2].cos())),
+            &Vector2::new(x[0], x[1]),
+            ref_frame)
     }
 
-    pub fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>) -> Vec<Geometry> {
-        let frame = BicopterDynamicalModel::body_centered_frame(x);
+    pub fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry> {
+        let frame = BicopterDynamicalModel::body_centered_frame(x, ref_frame);
         let left = Vector2::new(-self.prop_dist/2.0, 0.0);
         let right = Vector2::new(self.prop_dist/2.0, 0.0);
 

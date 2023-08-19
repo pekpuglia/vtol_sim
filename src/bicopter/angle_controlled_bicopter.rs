@@ -1,4 +1,4 @@
-use crate::background::Background;
+use crate::{background::Background, reference_frame::{ReferenceFrame, SCREEN_FRAME}};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series};
@@ -100,6 +100,7 @@ struct AngleFeedbackBicopter {
         0.0
     ]")]
     u: nalgebra::DVector<f64>,
+    ref_frame: ReferenceFrame,
     input_receiver: BicopterForceAngleInputReceiver
 }
 
@@ -142,7 +143,7 @@ impl Component for AngleFeedbackBicopter {
         self.plant
             .dir_ref()
             .ds2_ref()
-            .body_centered_geometry(&self.x, &thrusts)
+            .body_centered_geometry(&self.x, &thrusts, &self.ref_frame)
             .iter()
             .map(|geom| geom.draw(canvas))
             .last();
@@ -182,6 +183,11 @@ impl Component for World {
 pub fn bicopter_main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
+    let ref_frame = ReferenceFrame::new_from_screen_frame(
+        &Vector2::x(), 
+        &Vector2::y(), 
+        &Vector2::new(0.0,HEI as f64/2.0));
+
     let mut drawer = Drawer::new(
         60, 
         WID as usize, 
@@ -202,7 +208,7 @@ pub fn bicopter_main() {
                             )
                         ), 
                         AngleFeedbackAdapter::new()
-                    ),
+                    ), ref_frame,
                     BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: std::f64::consts::FRAC_PI_2}
                 ), background: Background::new(
                     Vector2::new(0.0,0.0), 
