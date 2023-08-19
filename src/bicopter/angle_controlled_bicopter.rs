@@ -3,6 +3,7 @@ use crate::{background::Background, reference_frame::{ReferenceFrame, SCREEN_FRA
 use super::*;
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
+use egaku2d::glutin::event::{KeyboardInput, VirtualKeyCode};
 use nalgebra::Vector2;
 
 #[derive(new, Clone)]
@@ -165,7 +166,8 @@ enum CameraOptions {
 struct World {
     bicopter: AngleFeedbackBicopter,
     background: Background,
-    camera_option: CameraOptions
+    camera_option: CameraOptions,
+    camera_option_toggle: bool
 }
 
 impl Component for World {
@@ -179,13 +181,27 @@ impl Component for World {
                 self.bicopter.ref_frame = ref_frame;
                 self.background.ref_frame = ref_frame;
             },
-            CameraOptions::Fixed => todo!(),
+            CameraOptions::Fixed => {},
         }
         self.background.draw(canvas, dt, paused);
         self.bicopter.draw(canvas, dt, paused)
     }
 
     fn receive_event(&mut self, ev: &Event<'_, ()>) {
+        if let Event::WindowEvent { 
+            event: WindowEvent::KeyboardInput { 
+                input: KeyboardInput { virtual_keycode: Some(VirtualKeyCode::V), .. }, .. }, .. } = ev 
+            {
+            if !self.camera_option_toggle {
+                self.camera_option = match self.camera_option {
+                    CameraOptions::VehicleCentered => CameraOptions::Fixed,
+                    CameraOptions::Fixed => CameraOptions::VehicleCentered,
+                };
+                self.camera_option_toggle = true;
+            } else {
+                self.camera_option_toggle = false;
+            }
+        }
         self.background.receive_event(ev);
         self.bicopter.receive_event(ev);
     }
@@ -227,7 +243,7 @@ pub fn bicopter_main() {
                     [1.0,0.0,0.0,0.3], 
                     [0.0,1.0,0.0,0.3], 
                     WID.into(), 
-                    HEI.into()), camera_option: CameraOptions::VehicleCentered })
+                    HEI.into()), camera_option: CameraOptions::Fixed, camera_option_toggle: false })
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
