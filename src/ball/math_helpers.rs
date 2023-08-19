@@ -1,13 +1,13 @@
 // use cgmath::{Vector2, Matrix2, InnerSpace, SquareMatrix, Deg};
 use nalgebra::{Vector2, Matrix2};
 
-pub fn reflect(axis: Vector2<f32>, to_reflect: Vector2<f32>) -> Vector2<f32> {
+pub fn reflect(axis: Vector2<f64>, to_reflect: Vector2<f64>) -> Vector2<f64> {
     let norm_axis = axis.normalize();
     let axis_base = Matrix2::new(norm_axis.x, norm_axis.y, -norm_axis.y, norm_axis.x);
     axis_base * Matrix2::new(1.0, 0.0, 0.0, -1.0) * axis_base.try_inverse().expect("axis_base should be isometric") * to_reflect
 }
 
-pub fn intersection_lambda(pos1: Vector2<f32>, dir1: Vector2<f32>, pos2: Vector2<f32>, dir2: Vector2<f32>) -> Result<f32, ()> {
+pub fn intersection_lambda(pos1: Vector2<f64>, dir1: Vector2<f64>, pos2: Vector2<f64>, dir2: Vector2<f64>) -> Result<f64, ()> {
     //pos1 + lambda1 * dir1 = pos2 + lambda2 * dir2
     //[dir1 -dir2] * [lambda1; lambda2] = pos2 - pos1
     //returns lambda1
