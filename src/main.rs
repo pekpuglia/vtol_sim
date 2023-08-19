@@ -15,6 +15,8 @@ mod bicopter;
 //apply background to plain bicopter
 //make position-controlled bicopter
 //zoom?
+//make reference frames safer
+//eliminate dvector? enum map?
 //add plane
 //add vtol
 //add rocket
