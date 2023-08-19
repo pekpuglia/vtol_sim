@@ -3,7 +3,8 @@ use std::{time::Instant, ops::{Div, Range}};
 use egaku2d::{glutin::{event::{Event, WindowEvent, VirtualKeyCode, ElementState, MouseButton}, event_loop::{ControlFlow, EventLoop}}, SimpleCanvas};
 use nalgebra::Vector2;
 
-use crate::reference_frame::{ReferenceFrame, Geometry, GeometryTypes};
+use crate::reference_frame::ReferenceFrame;
+use crate::geometry::{Geometry, GeometryTypes};
 
 pub trait Component {
     fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool);
