@@ -1,5 +1,6 @@
 use crate::graphical_utils::*;
-use crate::math_helpers::*;
+mod math_helpers;
+use math_helpers::*;
 use nalgebra::Vector2;
 use ode_solvers::Vector4;
 use nalgebra::geometry::Rotation2;

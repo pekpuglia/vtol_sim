@@ -1,7 +1,7 @@
 mod graphical_utils;
 mod reference_frame;
 mod ball;
-mod math_helpers;
+// mod math_helpers;
 
 mod bicopter;
 
@@ -16,5 +16,5 @@ mod bicopter;
 //add vtol
 //add rocket
 fn main() {
-    bicopter::angle_controlled_bicopter::bicopter_main()
+    ball::ball_main()
 }
