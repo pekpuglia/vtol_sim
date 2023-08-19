@@ -1,4 +1,4 @@
-use crate::world::World;
+use crate::background::Background;
 
 use super::*;
 use control_systems::{NegativeFeedback, Series};
@@ -156,6 +156,29 @@ impl Component for AngleFeedbackBicopter {
     }
 }
 
+enum CameraOptions {
+    VehicleCentered,
+    Fixed
+}
+
+struct World {
+    bicopter: AngleFeedbackBicopter,
+    background: Background,
+    camera_option: CameraOptions
+}
+
+impl Component for World {
+    fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool) {
+        self.background.draw(canvas, dt, paused);
+        self.bicopter.draw(canvas, dt, paused)
+    }
+
+    fn receive_event(&mut self, ev: &Event<'_, ()>) {
+        self.background.receive_event(ev);
+        self.bicopter.receive_event(ev);
+    }
+}
+
 pub fn bicopter_main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
@@ -166,28 +189,28 @@ pub fn bicopter_main() {
         "test", 
         &ev_loop,
         vec![
-            Box::new(World::new(
-                Vector2::new(0.0,0.0), 
-                100.0, 
-                [1.0,0.0,0.0,0.3], 
-                [0.0,1.0,0.0,0.3], 
-                WID.into(), 
-                HEI.into())),
-            Box::new(AngleFeedbackBicopter::new(
-                NegativeFeedback::new(
-                    Series::new(
-                        PDController { kp: 1000.0, kd: 2000.0 },
-                        BicopterDynamicalModel::new(
-                            1000.0, 
-                            1.0, 
-                            100.0, 
-                            40.0
-                        )
-                    ), 
-                    AngleFeedbackAdapter::new()
-                ),
-                BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: std::f64::consts::FRAC_PI_2}
-            ))
+            Box::new(World { 
+                bicopter: AngleFeedbackBicopter::new(
+                    NegativeFeedback::new(
+                        Series::new(
+                            PDController { kp: 1000.0, kd: 2000.0 },
+                            BicopterDynamicalModel::new(
+                                1000.0, 
+                                1.0, 
+                                100.0, 
+                                40.0
+                            )
+                        ), 
+                        AngleFeedbackAdapter::new()
+                    ),
+                    BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: std::f64::consts::FRAC_PI_2}
+                ), background: Background::new(
+                    Vector2::new(0.0,0.0), 
+                    100.0, 
+                    [1.0,0.0,0.0,0.3], 
+                    [0.0,1.0,0.0,0.3], 
+                    WID.into(), 
+                    HEI.into()), camera_option: CameraOptions::Fixed })
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));

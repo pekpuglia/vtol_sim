@@ -1,7 +1,7 @@
 //colocar conversor de referencial?
 
 //screen frame: (0,0) no canto superior esquerdo, x p direita, y p baixo
-//world frame (0,0) configurável, x p direita, y p esquerda
+//Background frame (0,0) configurável, x p direita, y p esquerda
 //etc
 use nalgebra::{Vector2, Matrix2};
 

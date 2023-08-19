@@ -1,7 +1,7 @@
 mod graphical_utils;
 mod reference_frame;
 mod geometry;
-mod world;
+mod background;
 
 mod ball;
 
@@ -12,7 +12,7 @@ mod bicopter;
 //todo
 //add config file
 //add ui with control options
-//add world, camera
+//add Background, camera
 //add plane
 //add vtol
 //add rocket
