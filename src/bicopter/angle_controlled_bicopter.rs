@@ -88,7 +88,7 @@ struct AngleFeedbackBicopter {
     plant: NegativeFeedback<Series<PDController, BicopterDynamicalModel>, AngleFeedbackAdapter>,
     #[new(value="dvector![
         WID as f64/2.0,
-        HEI as f64/2.0,
+        -HEI as f64/2.0,
         0.0,
         0.0,
         0.0,
@@ -170,6 +170,17 @@ struct World {
 
 impl Component for World {
     fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool) {
+        match self.camera_option {
+            CameraOptions::VehicleCentered => {
+                let ref_frame = ReferenceFrame::new_from_screen_frame(
+                    &Vector2::x(), 
+                    &-Vector2::y(), 
+                &Vector2::new(WID as f64/2.0 - self.bicopter.x[0], HEI as f64/2.0 + self.bicopter.x[1]));
+                self.bicopter.ref_frame = ref_frame;
+                self.background.ref_frame = ref_frame;
+            },
+            CameraOptions::Fixed => todo!(),
+        }
         self.background.draw(canvas, dt, paused);
         self.bicopter.draw(canvas, dt, paused)
     }
@@ -186,7 +197,7 @@ pub fn bicopter_main() {
     let ref_frame = ReferenceFrame::new_from_screen_frame(
         &Vector2::x(), 
         &-Vector2::y(), 
-        &Vector2::new(0.0,HEI as f64/2.0));
+        &Vector2::new(0.0,0.0));
 
     let mut drawer = Drawer::new(
         60, 
@@ -216,7 +227,7 @@ pub fn bicopter_main() {
                     [1.0,0.0,0.0,0.3], 
                     [0.0,1.0,0.0,0.3], 
                     WID.into(), 
-                    HEI.into()), camera_option: CameraOptions::Fixed })
+                    HEI.into()), camera_option: CameraOptions::VehicleCentered })
         ]);
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));

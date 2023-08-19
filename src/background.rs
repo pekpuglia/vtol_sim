@@ -4,7 +4,7 @@ use crate::{reference_frame::ReferenceFrame, geometry::{Geometry, GeometryTypes}
 use nalgebra::Vector2;
 use crate::graphical_utils::{Component, SimpleCanvas, Event};
 pub struct Background {
-    ref_frame: ReferenceFrame,
+    pub ref_frame: ReferenceFrame,
     tile_size: f64,
     color1: [f32; 4],
     color2: [f32; 4],
