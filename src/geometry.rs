@@ -75,16 +75,16 @@ impl Geometry {
             ref_frame: *dest,
             geom_type: match self.geom_type {
                 GeometryTypes::Circle { center, radius } => {
-                    GeometryTypes::Circle { center: center.to_frame(&self.ref_frame, dest), radius }
+                    GeometryTypes::Circle { center: center.position_to_frame(&self.ref_frame, dest), radius }
                 },
                 GeometryTypes::AARect { lower, upper } => {
-                    GeometryTypes::AARect { lower: lower.to_frame(&self.ref_frame, dest), upper: upper.to_frame(&self.ref_frame, dest) }
+                    GeometryTypes::AARect { lower: lower.position_to_frame(&self.ref_frame, dest), upper: upper.position_to_frame(&self.ref_frame, dest) }
                 },
                 GeometryTypes::Line { p1, p2, thickness } => {
-                    GeometryTypes::Line { p1: p1.to_frame(&self.ref_frame, dest), p2: p2.to_frame(&self.ref_frame, dest), thickness }
+                    GeometryTypes::Line { p1: p1.position_to_frame(&self.ref_frame, dest), p2: p2.position_to_frame(&self.ref_frame, dest), thickness }
                 },
                 GeometryTypes::Arrow { start, end, thickness } => {
-                    GeometryTypes::Arrow { start: start.to_frame(&self.ref_frame, dest), end: end.to_frame(&self.ref_frame, dest), thickness }
+                    GeometryTypes::Arrow { start: start.position_to_frame(&self.ref_frame, dest), end: end.position_to_frame(&self.ref_frame, dest), thickness }
                 },
             },
         }
