@@ -12,7 +12,9 @@ mod bicopter;
 //todo
 //add config file
 //add ui with control options
-//add Background, camera
+//apply background to plain bicopter
+//make position-controlled bicopter
+//zoom?
 //add plane
 //add vtol
 //add rocket
