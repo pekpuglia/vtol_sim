@@ -3,7 +3,7 @@ use std::ops::{Div, Range};
 use crate::{reference_frame::ReferenceFrame, geometry::{Geometry, GeometryTypes}};
 use nalgebra::Vector2;
 use crate::graphical_utils::{Component, SimpleCanvas, Event};
-pub struct World {
+pub struct Background {
     ref_frame: ReferenceFrame,
     tile_size: f64,
     color1: [f32; 4],
@@ -12,9 +12,9 @@ pub struct World {
     screen_width: f64
 }
 
-impl World {
-    pub fn new(origin_screen_frame: Vector2<f64>, tile_size: f64, color1: [f32; 4], color2: [f32;4], screen_width: f64, screen_height: f64) -> World {
-        World { 
+impl Background {
+    pub fn new(origin_screen_frame: Vector2<f64>, tile_size: f64, color1: [f32; 4], color2: [f32;4], screen_width: f64, screen_height: f64) -> Background {
+        Background { 
             ref_frame: ReferenceFrame::new_from_screen_frame(
                 &Vector2::x(), 
                 &-Vector2::y(), 
@@ -28,7 +28,7 @@ impl World {
     }
 }
 
-impl Component for World {    
+impl Component for Background {    
     fn draw(&mut self, canvas: &mut SimpleCanvas, _dt: f32, _paused: bool) {
         let screen_origin = -self.ref_frame.origin_screen_frame;
 
