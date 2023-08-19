@@ -28,9 +28,9 @@ impl ReferenceFrame {
 
     pub fn new_from_frame(x_vector: &Vector2<f64>, y_vector: &Vector2<f64>, origin: &Vector2<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
         ReferenceFrame { 
-            x_unit_vector_screen_frame: x_vector.normalize().to_frame(ref_frame, &SCREEN_FRAME), 
-            y_unit_vector_screen_frame: y_vector.normalize().to_frame(ref_frame, &SCREEN_FRAME), 
-            origin_screen_frame: origin.to_frame(ref_frame, &SCREEN_FRAME) }
+            x_unit_vector_screen_frame: x_vector.normalize().direction_to_frame(ref_frame, &SCREEN_FRAME), 
+            y_unit_vector_screen_frame: y_vector.normalize().direction_to_frame(ref_frame, &SCREEN_FRAME), 
+            origin_screen_frame: origin.position_to_frame(ref_frame, &SCREEN_FRAME) }
     }
 }
 
@@ -41,15 +41,29 @@ impl From<&ReferenceFrame> for Matrix2<f64> {
 }
 
 pub trait ConvertToFrame {
-    fn to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self;
+    fn position_to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self;
+    fn direction_to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self;
 }
 
 impl ConvertToFrame for Vector2<f64> {
-    fn to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self {
+    fn position_to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self {
         let origin_mat: Matrix2<f64> = origin.into();
         let dest_mat: Matrix2<f64> = dest.into();
+    
+        dest_mat
+            .try_inverse()
+            .expect("Reference Frame Matrices should always be invertible") 
+            * (origin_mat * self + origin.origin_screen_frame - dest.origin_screen_frame)
+    }
 
-        dest_mat.try_inverse().expect("Reference Frame Matrices should always be invertible") * (origin_mat * self + origin.origin_screen_frame - dest.origin_screen_frame)
+    fn direction_to_frame(&self, origin: &ReferenceFrame, dest: &ReferenceFrame) -> Self {
+        let origin_mat: Matrix2<f64> = origin.into();
+        let dest_mat: Matrix2<f64> = dest.into();
+    
+        dest_mat
+            .try_inverse()
+            .expect("Reference Frame Matrices should always be invertible") 
+            * origin_mat * self
     }
 }
 
@@ -65,7 +79,7 @@ mod test_frame_conversion {
             y_unit_vector_screen_frame: Vector2::new(-1.0, 1.0), 
             origin_screen_frame: Vector2::new(1.0, 0.0) };
 
-        let result = Vector2::new(1.0, 1.0).to_frame(&SCREEN_FRAME, &destination_frame);
+        let result = Vector2::new(1.0, 1.0).position_to_frame(&SCREEN_FRAME, &destination_frame);
         
         assert!((result - vector![1.0 / 2.0, 1.0 / 2.0]).norm() < 1e-10)
     }
