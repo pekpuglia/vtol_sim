@@ -109,7 +109,7 @@ impl DynamicalSystem for BicopterDynamicalModel {
             x[4],
             x[5],
             thrust.x / self.mass,
-            thrust.y / self.mass + self.gravity,
+            thrust.y / self.mass - self.gravity,
             self.prop_dist * (u[0] - u[1]) / self.inertia
         ]
     }

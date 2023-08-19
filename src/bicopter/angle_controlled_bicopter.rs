@@ -185,7 +185,7 @@ pub fn bicopter_main() {
 
     let ref_frame = ReferenceFrame::new_from_screen_frame(
         &Vector2::x(), 
-        &Vector2::y(), 
+        &-Vector2::y(), 
         &Vector2::new(0.0,HEI as f64/2.0));
 
     let mut drawer = Drawer::new(
