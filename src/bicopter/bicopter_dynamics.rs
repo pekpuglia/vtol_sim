@@ -19,12 +19,13 @@ impl BicopterDynamicalModel {
         BicopterDynamicalModel { inertia, mass, gravity, prop_dist }
     }
 
-    pub fn propeller_direction(x: &nalgebra::DVector<f64>) -> Vector2<f64> {
-        Vector2::new(x[2].sin(), -x[2].cos())
+    pub fn propeller_direction(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vector2<f64> {
+        let sign = Matrix2::<f64>::from(ref_frame).determinant().signum();
+        sign * Vector2::new(x[2].sin(), -x[2].cos())
     }
 
-    pub fn left_right_positions(&self, x: & nalgebra::DVector<f64>) -> (Vector2<f64>, Vector2<f64>) {
-        let prop_dir = BicopterDynamicalModel::propeller_direction(x);
+    pub fn left_right_positions(&self, x: & nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> (Vector2<f64>, Vector2<f64>) {
+        let prop_dir = BicopterDynamicalModel::propeller_direction(x, ref_frame);
      
         let left_right = Rotation2::new(std::f64::consts::FRAC_PI_2) * prop_dir;
         let left = Vector2::new(x[0], x[1]) - self.prop_dist/2.0 * left_right;
@@ -98,18 +99,17 @@ impl DynamicalSystem for BicopterDynamicalModel {
     const INPUT_SIZE      : usize = 2;
 
     const OUTPUT_SIZE     : usize = 6;
-
+    //assume sistema x p direita, y p cima!
     fn xdot(&self, _t: f64, 
         x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        let thrust = 
-            (u[0] + u[1]) * BicopterDynamicalModel::propeller_direction(&x);
+
         dvector![
             x[3],
             x[4],
             x[5],
-            thrust.x / self.mass,
-            thrust.y / self.mass - self.gravity,
+            - (u[0] + u[1]) * x[2].sin() / self.mass,
+              (u[0] + u[1]) * x[2].cos() / self.mass - self.gravity,
             self.prop_dist * (u[0] - u[1]) / self.inertia
         ]
     }

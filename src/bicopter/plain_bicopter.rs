@@ -1,3 +1,5 @@
+use crate::reference_frame::SCREEN_FRAME;
+
 use super::*;
 
 #[derive(Clone)]
@@ -82,10 +84,10 @@ impl Component for PlainBicopter {
             self.update(dt as f64);
         }
 
-        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x).map(|x| x as f32);
+        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x, &SCREEN_FRAME).map(|x| x as f32);
 
         let (left, right) = {
-            let tmp = self.plant.left_right_positions(&self.x);
+            let tmp = self.plant.left_right_positions(&self.x, &SCREEN_FRAME);
 
             (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
         };

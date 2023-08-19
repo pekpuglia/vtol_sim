@@ -209,7 +209,7 @@ pub fn bicopter_main() {
                         ), 
                         AngleFeedbackAdapter::new()
                     ), ref_frame,
-                    BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: std::f64::consts::FRAC_PI_2}
+                    BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: -std::f64::consts::FRAC_PI_2}
                 ), background: Background::new(
                     Vector2::new(0.0,0.0), 
                     100.0, 
