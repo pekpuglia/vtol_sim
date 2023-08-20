@@ -7,9 +7,9 @@ use egaku2d::glutin::event::{KeyboardInput, VirtualKeyCode};
 use nalgebra::Vector2;
 
 #[derive(new, Clone)]
-struct BicopterForceAngleInputReceiver {
-    force_gain: f64,
-    angle_gain: f64
+pub struct BicopterForceAngleInputReceiver {
+    pub force_gain: f64,
+    pub angle_gain: f64
 }
 
 impl BicopterForceAngleInputReceiver {
@@ -27,9 +27,9 @@ impl BicopterForceAngleInputReceiver {
 }
 
 #[derive(new, Clone)]
-struct PDController {
-    kp: f64,
-    kd: f64,
+pub struct PDController {
+    pub kp: f64,
+    pub kd: f64,
 }
 
 impl DynamicalSystem for PDController {
@@ -61,7 +61,7 @@ impl DynamicalSystem for PDController {
 }
 
 #[derive(new, Clone)]
-struct AngleFeedbackAdapter;
+pub struct AngleFeedbackAdapter;
 
 impl DynamicalSystem for AngleFeedbackAdapter {
     const STATE_VECTOR_SIZE: usize = 0;
@@ -85,7 +85,7 @@ impl DynamicalSystem for AngleFeedbackAdapter {
 }
 
 #[derive(new, Clone)]
-struct AngleFeedbackBicopter {
+pub struct AngleFeedbackBicopter {
     plant: NegativeFeedback<Series<PDController, BicopterDynamicalModel>, AngleFeedbackAdapter>,
     #[new(value="dvector![
         WID as f64/2.0,
@@ -95,13 +95,13 @@ struct AngleFeedbackBicopter {
         0.0,
         0.0
     ]")]
-    x: nalgebra::DVector<f64>,
+    pub x: nalgebra::DVector<f64>,
     #[new(value="dvector![
         0.0,
         0.0
     ]")]
     u: nalgebra::DVector<f64>,
-    ref_frame: ReferenceFrame,
+    pub ref_frame: ReferenceFrame,
     input_receiver: BicopterForceAngleInputReceiver
 }
 
@@ -158,93 +158,40 @@ impl Component for AngleFeedbackBicopter {
     }
 }
 
-enum CameraOptions {
-    VehicleCentered,
-    Fixed
-}
-
-struct World {
-    bicopter: AngleFeedbackBicopter,
-    background: Background,
-    camera_option: CameraOptions,
-    camera_option_toggle: bool
-}
-
-impl Component for World {
-    fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool) {
-        match self.camera_option {
-            CameraOptions::VehicleCentered => {
-                let ref_frame = ReferenceFrame::new_from_screen_frame(
-                    &Vector2::x(), 
-                    &-Vector2::y(), 
-                &Vector2::new(WID as f64/2.0 - self.bicopter.x[0], HEI as f64/2.0 + self.bicopter.x[1]));
-                self.bicopter.ref_frame = ref_frame;
-                self.background.ref_frame = ref_frame;
-            },
-            CameraOptions::Fixed => {},
-        }
-        self.background.draw(canvas, dt, paused);
-        self.bicopter.draw(canvas, dt, paused)
+impl Vehicle for AngleFeedbackBicopter {
+    fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
+        self.ref_frame = *new_ref_frame;
     }
 
-    fn receive_event(&mut self, ev: &Event<'_, ()>) {
-        if let Event::WindowEvent { 
-            event: WindowEvent::KeyboardInput { 
-                input: KeyboardInput { virtual_keycode: Some(VirtualKeyCode::V), .. }, .. }, .. } = ev 
-            {
-            if !self.camera_option_toggle {
-                self.camera_option = match self.camera_option {
-                    CameraOptions::VehicleCentered => CameraOptions::Fixed,
-                    CameraOptions::Fixed => CameraOptions::VehicleCentered,
-                };
-                self.camera_option_toggle = true;
-            } else {
-                self.camera_option_toggle = false;
-            }
-        }
-        self.background.receive_event(ev);
-        self.bicopter.receive_event(ev);
+    fn x(&self) -> &DVector<f64> {
+        &self.x
     }
 }
 
-pub fn bicopter_main() {
-    let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
+use super::bicopter_main;
+
+pub fn main() {
 
     let ref_frame = ReferenceFrame::new_from_screen_frame(
         &Vector2::x(), 
         &-Vector2::y(), 
         &Vector2::new(0.0,0.0));
 
-    let mut drawer = Drawer::new(
-        60, 
-        WID as usize, 
-        HEI as usize, 
-        "test", 
-        &ev_loop,
-        vec![
-            Box::new(World { 
-                bicopter: AngleFeedbackBicopter::new(
-                    NegativeFeedback::new(
-                        Series::new(
-                            PDController { kp: 1000.0, kd: 2000.0 },
-                            BicopterDynamicalModel::new(
-                                1000.0, 
-                                1.0, 
-                                100.0, 
-                                40.0
-                            )
-                        ), 
-                        AngleFeedbackAdapter::new()
-                    ), ref_frame,
-                    BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: -std::f64::consts::FRAC_PI_2}
-                ), background: Background::new(
-                    Vector2::new(0.0,0.0), 
-                    100.0, 
-                    [1.0,0.0,0.0,0.3], 
-                    [0.0,1.0,0.0,0.3], 
-                    WID.into(), 
-                    HEI.into()), camera_option: CameraOptions::Fixed, camera_option_toggle: false })
-        ]);
-
-    ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
+    bicopter_main(
+        AngleFeedbackBicopter::new(
+            NegativeFeedback::new(
+                Series::new(
+                    PDController { kp: 1000.0, kd: 2000.0 },
+                    BicopterDynamicalModel::new(
+                        1000.0, 
+                        1.0, 
+                        100.0, 
+                        40.0
+                    )
+                ), 
+                AngleFeedbackAdapter::new()
+            ), ref_frame,
+            BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: -std::f64::consts::FRAC_PI_2}
+        )
+    )
 }
