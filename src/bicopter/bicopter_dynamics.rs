@@ -1,4 +1,4 @@
-use nalgebra::{Vector2, dvector, Rotation2, Matrix2};
+use nalgebra::{Vector2, dvector, Matrix2};
 use crate::reference_frame::ReferenceFrame;
 use crate::geometry::{Geometry, GeometryTypes};
 pub use control_systems::DynamicalSystem;
@@ -17,20 +17,6 @@ impl BicopterDynamicalModel {
         gravity: f64,
         prop_dist: f64) -> BicopterDynamicalModel {
         BicopterDynamicalModel { inertia, mass, gravity, prop_dist }
-    }
-
-    pub fn propeller_direction(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vector2<f64> {
-        let sign = Matrix2::<f64>::from(ref_frame).determinant().signum();
-        sign * Vector2::new(x[2].sin(), -x[2].cos())
-    }
-
-    pub fn left_right_positions(&self, x: & nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> (Vector2<f64>, Vector2<f64>) {
-        let prop_dir = BicopterDynamicalModel::propeller_direction(x, ref_frame);
-     
-        let left_right = Rotation2::new(std::f64::consts::FRAC_PI_2) * prop_dir;
-        let left = Vector2::new(x[0], x[1]) - self.prop_dist/2.0 * left_right;
-        let right = Vector2::new(x[0], x[1]) + self.prop_dist/2.0 * left_right;
-        (left, right)
     }
 
     pub fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {

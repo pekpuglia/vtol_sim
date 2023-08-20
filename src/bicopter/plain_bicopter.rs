@@ -1,7 +1,3 @@
-use std::cell::Ref;
-
-use crate::reference_frame::SCREEN_FRAME;
-
 use super::*;
 
 #[derive(Clone)]
@@ -100,17 +96,6 @@ impl Component for PlainBicopter {
         if !paused {
             self.update(dt as f64);
         }
-
-        let prop_dir = BicopterDynamicalModel::propeller_direction(&self.x, &SCREEN_FRAME).map(|x| x as f32);
-
-        let (left, right) = {
-            let tmp = self.plant.left_right_positions(&self.x, &SCREEN_FRAME);
-
-            (tmp.0.map(|x| x as f32), tmp.1.map(|x| x as f32))
-        };
-
-        let l_thrust = self.u[0] as f32;
-        let r_thrust = self.u[1] as f32;
 
         //corpo
         self.plant.body_centered_geometry(&self.x, &self.u, &self.ref_frame)
