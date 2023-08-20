@@ -1,9 +1,8 @@
-use crate::{background::Background, reference_frame::ReferenceFrame};
+use crate::reference_frame::ReferenceFrame;
 
 use super::*;
 use control_systems::{NegativeFeedback, Series};
 use derive_new::new;
-use egaku2d::glutin::event::{KeyboardInput, VirtualKeyCode};
 use nalgebra::Vector2;
 
 #[derive(new, Clone)]

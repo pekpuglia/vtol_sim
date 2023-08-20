@@ -1,4 +1,3 @@
-use control_systems::{NegativeFeedback, Series};
 use egaku2d::glutin::event::{Event, WindowEvent, VirtualKeyCode, KeyboardInput};
 use nalgebra::{dvector, Vector2, DVector};
 use ode_solvers::Rk4;
@@ -12,7 +11,6 @@ const HEI: f32 = 480.0;
 mod bicopter_dynamics;
 use bicopter_dynamics::{BicopterDynamicalModel, DynamicalSystem};
 
-use self::angle_controlled_bicopter::{AngleFeedbackBicopter, PDController, AngleFeedbackAdapter, BicopterForceAngleInputReceiver};
 
 pub mod plain_bicopter;
 
@@ -74,11 +72,6 @@ impl<VehicleType: Component + Vehicle> Component for World<VehicleType> {
 
 fn bicopter_main(bicopter: impl Component + Vehicle + 'static) {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
-
-    let ref_frame = ReferenceFrame::new_from_screen_frame(
-        &Vector2::x(), 
-        &-Vector2::y(), 
-        &Vector2::new(0.0,0.0));
 
     let mut drawer = Drawer::new(
         60, 
