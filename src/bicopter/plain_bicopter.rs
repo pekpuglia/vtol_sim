@@ -1,3 +1,5 @@
+use std::cell::Ref;
+
 use crate::reference_frame::SCREEN_FRAME;
 
 use super::*;
@@ -32,37 +34,52 @@ impl BicopterForceMomentInputReceiver {
         
     }
 }
-#[derive(Clone)]
+#[derive(Clone, derive_new::new)]
 struct PlainBicopter {
     plant: BicopterDynamicalModel,
-    //mudar
+    #[new(value="dvector![
+        WID as f64/2.0,
+        -HEI as f64/2.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+    ]")]
     x: nalgebra::DVector<f64>,
+    #[new(value="dvector![
+        0.0,
+        0.0
+    ]")]
     u: nalgebra::DVector<f64>,
+    ref_frame: ReferenceFrame,
     input_receiver: BicopterForceMomentInputReceiver
 }
 
 impl ode_solvers::System<ode_solvers::DVector<f64>> for PlainBicopter {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
-        dy.copy_from_slice(self.plant.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice())
+        dy.copy_from_slice(self.plant.xdot(
+            x, 
+            nalgebra::DVector::from_row_slice(y.as_slice()), 
+            self.u.clone()).as_slice())
     }
 }
 
 impl PlainBicopter {
-    fn new(plant: BicopterDynamicalModel, input_receiver: BicopterForceMomentInputReceiver) -> PlainBicopter {
-        PlainBicopter { 
-            plant, 
-            x: dvector![
-                WID as f64/2.0,
-                HEI as f64/2.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0
-            ], u: dvector![
-                0.0,
-                0.0
-            ], input_receiver }
-    }
+    // fn new(plant: BicopterDynamicalModel, input_receiver: BicopterForceMomentInputReceiver) -> PlainBicopter {
+    //     PlainBicopter { 
+    //         plant, 
+    //         x: dvector![
+    //             WID as f64/2.0,
+    //             HEI as f64/2.0,
+    //             0.0,
+    //             0.0,
+    //             0.0,
+    //             0.0
+    //         ], u: dvector![
+    //             0.0,
+    //             0.0
+    //         ], input_receiver }
+    // }
 
     fn update(&mut self, dt: f64) {
         let mut stepper = Rk4::new(
@@ -96,27 +113,10 @@ impl Component for PlainBicopter {
         let r_thrust = self.u[1] as f32;
 
         //corpo
-        canvas
-            .lines(5.0)
-            .add(left.into(),right.into())
-            .send_and_uniforms(canvas)
-            .with_color([1.0, 1.0, 1.0, 1.0])
-            .draw();
-
-        //empuxos
-        canvas
-            .arrows(2.0)
-            .add(left.into(), (left + 0.7 * l_thrust * prop_dir).into())
-            .send_and_uniforms(canvas)
-            .with_color([1.0, 0.0, 0.0, 1.0])
-            .draw();
-
-        canvas
-            .arrows(2.0)
-            .add(right.into(), (right + 0.7 * r_thrust * prop_dir).into())
-            .send_and_uniforms(canvas)
-            .with_color([0.0, 0.0, 1.0, 1.0])
-            .draw();
+        self.plant.body_centered_geometry(&self.x, &self.u, &self.ref_frame)
+            .iter()
+            .map(|geom| geom.draw(canvas))
+            .last();
 
     }
 
@@ -128,24 +128,31 @@ impl Component for PlainBicopter {
     }
 }
 
-pub fn bicopter_main() {
-    let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
-    
-    let mut drawer = Drawer::new(
-        30, 
-        WID as usize, 
-        HEI as usize, 
-        "test", 
-        &ev_loop,
-        vec![
-            Box::new(PlainBicopter::new(
-                BicopterDynamicalModel::new(
-                    1000.0, 
-                    1.0, 
-                    100.0, 
-                40.0), 
-                BicopterForceMomentInputReceiver::new(200.0, 25.0 ))) 
-        ]);
+impl Vehicle for PlainBicopter {
+    fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
+        self.ref_frame = *new_ref_frame;
+    }
 
-    ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
+    fn x(&self) -> &DVector<f64> {
+        &self.x
+    }
+}
+
+pub fn main() {
+
+    let ref_frame = ReferenceFrame::new_from_screen_frame(
+        &Vector2::x(), 
+        &-Vector2::y(), 
+        &Vector2::new(0.0,0.0));
+
+    bicopter_main(
+        PlainBicopter::new(
+            BicopterDynamicalModel::new(
+                1000.0, 
+                1.0, 
+                100.0, 
+            40.0), 
+                ref_frame, 
+            BicopterForceMomentInputReceiver::new(200.0, -25.0 )
+    ));
 }

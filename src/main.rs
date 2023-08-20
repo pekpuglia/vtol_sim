@@ -12,7 +12,6 @@ mod bicopter;
 //todo
 //add config file
 //add ui with control options
-//apply background to plain bicopter
 //make position-controlled bicopter
 //zoom?
 //make reference frames safer
@@ -21,5 +20,5 @@ mod bicopter;
 //add vtol
 //add rocket
 fn main() {
-    bicopter::angle_controlled_bicopter::main()
+    bicopter::plain_bicopter::main()
 }
