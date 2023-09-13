@@ -16,6 +16,8 @@ pub mod plain_bicopter;
 
 pub mod angle_controlled_bicopter;
 
+pub mod position_controlled_bicopter;
+
 pub trait Vehicle {
     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame);
     fn x(&self) -> &DVector<f64>;

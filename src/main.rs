@@ -20,5 +20,5 @@ mod bicopter;
 //add vtol
 //add rocket
 fn main() {
-    bicopter::plain_bicopter::main()
+    bicopter::position_controlled_bicopter::main()
 }
