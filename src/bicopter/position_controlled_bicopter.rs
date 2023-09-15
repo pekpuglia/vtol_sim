@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::{ops::Add, cell::Ref};
 
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 
@@ -58,6 +58,7 @@ impl DynamicalSystem for AnglePDControllerHAL {
     }
 }
 
+#[derive(Clone, Copy)]
 struct PIDController {
     kp: f64,
     kd: f64,
@@ -84,6 +85,7 @@ impl DynamicalSystem for PIDController {
     }
 }
 
+#[derive(Clone, Copy)]
 struct PositionErrorToForceAndMomentConverter {
     x_pid: PIDController,
     y_pid: PIDController
@@ -159,6 +161,7 @@ impl DynamicalSystem for AngleFeedbackAdapter {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct PositionFeedbackAdapter;
 
 impl DynamicalSystem for PositionFeedbackAdapter {
@@ -191,120 +194,119 @@ type AngleFeedbackLoop = NegativeFeedback<Series<AnglePDControllerHAL, BicopterD
 
 type PositionFeedbackLoop = NegativeFeedback<Series<PositionErrorToForceAndMomentConverter, AngleFeedbackLoop>, PositionFeedbackAdapter>;
 
-// #[derive(new, Clone)]
-// pub struct AngleFeedbackBicopter {
-//     plant: NegativeFeedback<Series<AnglePDControllerHAL, BicopterDynamicalModel>, AngleFeedbackAdapter>,
-//     #[new(value="dvector![
-//         WID as f64/2.0,
-//         -HEI as f64/2.0,
-//         0.0,
-//         0.0,
-//         0.0,
-//         0.0
-//     ]")]
-//     pub x: nalgebra::DVector<f64>,
-//     #[new(value="dvector![
-//         0.0,
-//         0.0
-//     ]")]
-//     u: nalgebra::DVector<f64>,
-//     pub ref_frame: ReferenceFrame,
-//     input_receiver: BicopterForceAngleInputReceiver,
-//     future_receiver: BicopterPositionInputReceiver
-// }
+#[derive(Clone)]
+struct PositionControlledBicopter {
+    plant: PositionFeedbackLoop,
+    x: nalgebra::DVector<f64>,
+    u: nalgebra::DVector<f64>,
+    pub ref_frame: ReferenceFrame,
+    position_receiver: BicopterPositionInputReceiver
+}
 
+//abstrair p vehicle
+impl ode_solvers::System<ode_solvers::DVector<f64>> for PositionControlledBicopter {
+    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
+        dy.copy_from_slice(self.plant.xdot(
+            x, 
+            nalgebra::DVector::from_row_slice(y.as_slice()), 
+            self.u.clone()).as_slice())
+    }
+}
 
-// impl ode_solvers::System<ode_solvers::DVector<f64>> for AngleFeedbackBicopter {
-//     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
-//         dy.copy_from_slice(self.plant.xdot(
-//             x, 
-//             nalgebra::DVector::from_row_slice(y.as_slice()), 
-//             self.u.clone()).as_slice())
-//     }
-// }
+//esse também
+impl PositionControlledBicopter {
+    fn update(&mut self, dt: f64) {
+        let mut stepper = Rk4::new(
+            self.clone(),
+            0.0,
+            ode_solvers::DVector::from_row_slice(self.x.as_slice()),
+            dt,
+            dt/5.0
+        );
 
-// impl AngleFeedbackBicopter {
-//     fn update(&mut self, dt: f64) {
-//         let mut stepper = Rk4::new(
-//             self.clone(),
-//             0.0,
-//             ode_solvers::DVector::from_row_slice(self.x.as_slice()),
-//             dt,
-//             dt/5.0
-//         );
+        let _stats = stepper.integrate();
 
-//         let _stats = stepper.integrate();
+        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
+    }
+}
 
-//         self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
-//     }
-// }
+impl Component for PositionControlledBicopter {
+    fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
+        if !paused {
+            self.update(dt as f64);
+        }
 
-// impl Component for AngleFeedbackBicopter {
-//     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
-//         if !paused {
-//             self.update(dt as f64);
+        let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
+        let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
+        let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
 
-//         }
+        self.plant
+            .dir_ref()
+            .ds2_ref()
+            .dir_ref()
+            .ds2_ref()
+            .body_centered_geometry(&self.x, &thrusts, &self.ref_frame)
+            .iter()
+            .map(|geom| geom.draw(canvas))
+            .last();
+    }
 
-//         dbg!(self.future_receiver.position_target(&self.ref_frame));
+    fn receive_event(&mut self, ev: &Event<'_, ()>) {
+        self.position_receiver.update_mouse_position(ev);
+        let position_target = self.position_receiver.position_target(&self.ref_frame);
+        self.u = dvector![
+            position_target[0], 0.0,
+            position_target[1], 0.0
+        ]
 
-//         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
-//         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
-//         let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
+    }
+}
 
-//         self.plant
-//             .dir_ref()
-//             .ds2_ref()
-//             .body_centered_geometry(&self.x, &thrusts, &self.ref_frame)
-//             .iter()
-//             .map(|geom| geom.draw(canvas))
-//             .last();
-//     }
+impl Vehicle for PositionControlledBicopter {
+    fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
+        self.ref_frame = *new_ref_frame;
+    }
 
-//     fn receive_event(&mut self, ev: &Event<'_, ()>) {
-//         match self.input_receiver.targets(&self.ref_frame, ev) {
-//             Some(targets) => {self.u = targets},
-//             None => {},
-//         }
-//         self.future_receiver.update_mouse_position(ev);
-//     }
-// }
-
-// impl Vehicle for AngleFeedbackBicopter {
-//     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
-//         self.ref_frame = *new_ref_frame;
-//     }
-
-//     fn x(&self) -> &DVector<f64> {
-//         &self.x
-//     }
-// }
+    fn x(&self) -> &DVector<f64> {
+        &self.x
+    }
+}
 
 use super::bicopter_main;
 
 pub fn main() {
 
-    // let ref_frame = ReferenceFrame::new_from_screen_frame(
-    //     &Vector2::x(), 
-    //     &-Vector2::y(), 
-    //     &Vector2::new(0.0,0.0));
+    let ref_frame = ReferenceFrame::new_from_screen_frame(
+        &Vector2::x(), 
+        &-Vector2::y(), 
+        &Vector2::new(0.0,0.0));
 
-    // bicopter_main(
-    //     AngleFeedbackBicopter::new(
-    //         NegativeFeedback::new(
-    //             Series::new(
-    //                 AnglePDControllerHAL { kp: 1000.0, kd: 2000.0 },
-    //                 BicopterDynamicalModel::new(
-    //                     1000.0, 
-    //                     1.0, 
-    //                     100.0, 
-    //                     40.0
-    //                 )
-    //             ), 
-    //             AngleFeedbackAdapter::new()
-    //         ), ref_frame,
-    //         BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: -std::f64::consts::FRAC_PI_2},
-    //         BicopterPositionInputReceiver{ mouse_screen_pos: Vector2::zeros() }
-    //     )
-    // )
+    let angle_feedback_loop = NegativeFeedback::new(
+        Series::new(
+            AnglePDControllerHAL { kp: 1000.0, kd: 2000.0 },
+            BicopterDynamicalModel::new(
+                1000.0, 
+                1.0, 
+                100.0, 
+                40.0
+            )
+        ), 
+        AngleFeedbackAdapter::new()
+    );
+
+    let position_feedback_loop = NegativeFeedback::new(
+        Series::new(
+            PositionErrorToForceAndMomentConverter{
+                x_pid: PIDController { kp: 1.0, kd: 0.0, ki: 0.0 },
+                y_pid: PIDController { kp: 1.0, kd: 0.0, ki: 0.1 }
+            }, angle_feedback_loop), PositionFeedbackAdapter{}
+    );
+
+    bicopter_main(PositionControlledBicopter{
+        plant: position_feedback_loop,
+        position_receiver: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
+        ref_frame,
+        u: dvector![0.0,0.0,0.0,0.0],
+        x: dvector![WID as f64/2.0, HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0]
+    })
 }
