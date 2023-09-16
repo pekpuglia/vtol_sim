@@ -163,8 +163,8 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "control_systems"
-version = "0.7.0"
-source = "git+https://github.com/pekpuglia/control_systems.git#6663230df8de44cf686da400168949c118901329"
+version = "0.7.3"
+source = "git+https://github.com/pekpuglia/control_systems.git#2cc838f07f1b424384b3c3b33918fd7fe412173b"
 dependencies = [
  "eqsolver",
  "nalgebra 0.32.3",

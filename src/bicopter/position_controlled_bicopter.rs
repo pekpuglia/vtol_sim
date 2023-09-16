@@ -3,7 +3,7 @@ use std::{ops::Add, cell::Ref};
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 
 use super::*;
-use control_systems::{NegativeFeedback, Series, StateVector};
+use control_systems::{NegativeFeedback, Series, StateVector, Parallel};
 use derive_new::new;
 use nalgebra::Vector2;
 
@@ -58,7 +58,7 @@ impl DynamicalSystem for AnglePDControllerHAL {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct PIDController {
     kp: f64,
     kd: f64,
@@ -86,44 +86,29 @@ impl DynamicalSystem for PIDController {
 }
 
 #[derive(Clone, Copy)]
-struct PositionErrorToForceAndMomentConverter {
-    x_pid: PIDController,
-    y_pid: PIDController
+struct PositionTrackerToForceMoment {
+    position_pids: Parallel<PIDController, PIDController>
 }
 
-impl DynamicalSystem for PositionErrorToForceAndMomentConverter {
-    const STATE_VECTOR_SIZE: usize = 2;
+impl DynamicalSystem for PositionTrackerToForceMoment {
+    const STATE_VECTOR_SIZE: usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::STATE_VECTOR_SIZE;
 
-    const INPUT_SIZE      : usize = 4;
+    const INPUT_SIZE      : usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::INPUT_SIZE;
 
-    const OUTPUT_SIZE     : usize = 2;
+    const OUTPUT_SIZE     : usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::OUTPUT_SIZE + 1;
 
     fn xdot(&self, t: f64, 
         x: DVector<f64>, 
         u: DVector<f64>) -> DVector<f64> {
-        let mut ret = self.x_pid.xdot(t, 
-            x.rows(0, 1).into(), 
-            u.rows(0, 2).into()
-        );
-        
-        ret.extend(
-            self.y_pid.xdot(t, 
-                x.rows(1, 1).into(), 
-                u.rows(2, 2).into()).iter().copied()
-        );
-        ret
+        self.position_pids.xdot(t, x, u)
     }
 
     fn y(&self, t: f64, 
         x: DVector<f64>, 
         u: DVector<f64>) -> DVector<f64> {
-        let fx = self.x_pid.y(t, 
-            x.rows(0, 1).into(), 
-            u.rows(0, 2).into())[0];
+        let fx_fy = self.position_pids.y(t, x, u);
 
-        let fy = self.y_pid.y(t, 
-            x.rows(1, 1).into(), 
-            u.rows(2, 2).into())[0];
+        let fx = fx_fy[0]; let fy = fx_fy[1];
 
         let f = fx.powi(2).add(fy.powi(2)).sqrt();
 
@@ -182,38 +167,38 @@ impl DynamicalSystem for PositionFeedbackAdapter {
         u: DVector<f64>) -> DVector<f64> {
         //x vx y vy
         dvector![
-            x[0],
-            x[3],
-            x[1],
-            x[4]
+            u[0],
+            u[3],
+            u[1],
+            u[4]
         ]
     }
 }
 
 type AngleFeedbackLoop = NegativeFeedback<Series<AnglePDControllerHAL, BicopterDynamicalModel>, AngleFeedbackAdapter>;
 
-type PositionFeedbackLoop = NegativeFeedback<Series<PositionErrorToForceAndMomentConverter, AngleFeedbackLoop>, PositionFeedbackAdapter>;
+type PositionFeedbackLoop = NegativeFeedback<Series<PositionTrackerToForceMoment, AngleFeedbackLoop>, PositionFeedbackAdapter>;
 
 #[derive(Clone)]
 struct PositionControlledBicopter {
-    plant: PositionFeedbackLoop,
+    system: PositionFeedbackLoop,
     x: nalgebra::DVector<f64>,
     u: nalgebra::DVector<f64>,
     pub ref_frame: ReferenceFrame,
     position_receiver: BicopterPositionInputReceiver
 }
 
-//abstrair p vehicle
+// //abstrair p vehicle
 impl ode_solvers::System<ode_solvers::DVector<f64>> for PositionControlledBicopter {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
-        dy.copy_from_slice(self.plant.xdot(
+        dy.copy_from_slice(self.system.xdot(
             x, 
             nalgebra::DVector::from_row_slice(y.as_slice()), 
             self.u.clone()).as_slice())
     }
 }
 
-//esse também
+// //esse também
 impl PositionControlledBicopter {
     fn update(&mut self, dt: f64) {
         let mut stepper = Rk4::new(
@@ -236,18 +221,36 @@ impl Component for PositionControlledBicopter {
             self.update(dt as f64);
         }
 
-        let plant_input = StateVector::<PositionFeedbackLoop>::new(self.x.clone())
-            .dirx()
-            .x2()
-            .dirx()
-            .x2()
-            .data;
 
-        let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
-        let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
-        let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
-        //tornar statevector public
-        self.plant
+        let sv = StateVector::<PositionFeedbackLoop>::new(self.x.clone());
+
+        let position_error = self.system.error(0.0, sv.data.clone(), self.u.clone());
+
+        let force_moment = self.system
+            .dir_ref()
+            .y1(0.0, 
+                sv.dirx().data, 
+                position_error
+        );
+
+        let angle_error = self.system
+            .dir_ref()
+            .ds2_ref()
+            .error(0.0, 
+                sv.dirx().x2().data, 
+                force_moment
+        );
+
+        let thrusts = self.system
+            .dir_ref()
+            .ds2_ref()
+            .dir_ref()
+            .y1(0.0, 
+                sv.dirx().x2().dirx().data, 
+                angle_error
+        );
+
+        self.system
             .dir_ref()
             .ds2_ref()
             .dir_ref()
@@ -302,18 +305,17 @@ pub fn main() {
     );
 
     let position_feedback_loop = NegativeFeedback::new(
-        Series::new(
-            PositionErrorToForceAndMomentConverter{
-                x_pid: PIDController { kp: 1.0, kd: 0.0, ki: 0.0 },
-                y_pid: PIDController { kp: 1.0, kd: 0.0, ki: 0.1 }
-            }, angle_feedback_loop), PositionFeedbackAdapter{}
+        Series::new(PositionTrackerToForceMoment { position_pids: Parallel::new(
+            PIDController { kp: 1.0, kd: 0.0, ki: 0.0 }, 
+            PIDController { kp: 1.0, kd: 0.0, ki: 0.1 }) }
+            , angle_feedback_loop), PositionFeedbackAdapter{}
     );
 
     bicopter_main(PositionControlledBicopter{
-        plant: position_feedback_loop,
+        system: position_feedback_loop,
         position_receiver: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
         ref_frame,
         u: dvector![0.0,0.0,0.0,0.0],
-        x: dvector![WID as f64/2.0, HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0]
+        x: dvector![WID as f64/2.0, HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     })
 }
