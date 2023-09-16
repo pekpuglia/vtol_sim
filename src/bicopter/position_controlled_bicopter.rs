@@ -3,7 +3,7 @@ use std::{ops::Add, cell::Ref};
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 
 use super::*;
-use control_systems::{NegativeFeedback, Series};
+use control_systems::{NegativeFeedback, Series, StateVector};
 use derive_new::new;
 use nalgebra::Vector2;
 
@@ -236,10 +236,17 @@ impl Component for PositionControlledBicopter {
             self.update(dt as f64);
         }
 
+        let plant_input = StateVector::<PositionFeedbackLoop>::new(self.x.clone())
+            .dirx()
+            .x2()
+            .dirx()
+            .x2()
+            .data;
+
         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
         let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
-
+        //tornar statevector public
         self.plant
             .dir_ref()
             .ds2_ref()
