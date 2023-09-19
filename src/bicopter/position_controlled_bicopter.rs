@@ -3,7 +3,7 @@ use std::{ops::Add, cell::Ref};
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 
 use super::*;
-use control_systems::{NegativeFeedback, Series, StateVector, Parallel};
+use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};
 use derive_new::new;
 use nalgebra::Vector2;
 
@@ -221,6 +221,7 @@ impl Component for PositionControlledBicopter {
             self.update(dt as f64);
         }
 
+        dbg!(&self.x);
 
         let sv = StateVector::<PositionFeedbackLoop>::new(self.x.clone());
 
@@ -255,7 +256,12 @@ impl Component for PositionControlledBicopter {
             .ds2_ref()
             .dir_ref()
             .ds2_ref()
-            .body_centered_geometry(&self.x, &thrusts, &self.ref_frame)
+            .body_centered_geometry(&sv
+                .dirx()
+                .x2()
+                .dirx()
+                .x2()
+                .data, &thrusts, &self.ref_frame)
             .iter()
             .map(|geom| geom.draw(canvas))
             .last();
@@ -311,11 +317,16 @@ pub fn main() {
             , angle_feedback_loop), PositionFeedbackAdapter{}
     );
 
+    let initial_state_vector: StateVector<PositionFeedbackLoop> = [0.0, 0.0].into_sv::<PositionTrackerToForceMoment>()
+        .series(
+            [WID as f64/2.0, -HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0].into_sv::<AngleFeedbackLoop>()
+        ).feedback([].into_sv::<PositionFeedbackAdapter>());
+
     bicopter_main(PositionControlledBicopter{
         system: position_feedback_loop,
         position_receiver: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
         ref_frame,
         u: dvector![0.0,0.0,0.0,0.0],
-        x: dvector![WID as f64/2.0, HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        x: initial_state_vector.data
     })
 }

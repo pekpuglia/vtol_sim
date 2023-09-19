@@ -135,7 +135,6 @@ impl Component for AngleFeedbackBicopter {
             self.update(dt as f64);
 
         }
-
         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
         let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
