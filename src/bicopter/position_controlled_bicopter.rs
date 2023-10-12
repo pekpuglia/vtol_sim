@@ -1,4 +1,5 @@
-use std::{ops::Add, cell::Ref};
+
+use std::ops::Add;
 
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 
@@ -51,6 +52,7 @@ impl DynamicalSystem for AnglePDControllerHAL {
         let theta_error = u[1];
         let theta_dot = u[2];
         let moment = self.kp * theta_error + self.kd * theta_dot;
+        //errado!!!
         let l_thrust = force / 2.0 + moment / 2.0;
         let r_thrust = force / 2.0 - moment / 2.0;
 
@@ -86,11 +88,11 @@ impl DynamicalSystem for PIDController {
 }
 
 #[derive(Clone, Copy)]
-struct PositionTrackerToForceMoment {
+struct PositionTrackerToForceAngle {
     position_pids: Parallel<PIDController, PIDController>
 }
 
-impl DynamicalSystem for PositionTrackerToForceMoment {
+impl DynamicalSystem for PositionTrackerToForceAngle {
     const STATE_VECTOR_SIZE: usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::STATE_VECTOR_SIZE;
 
     const INPUT_SIZE      : usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::INPUT_SIZE;
@@ -177,7 +179,7 @@ impl DynamicalSystem for PositionFeedbackAdapter {
 
 type AngleFeedbackLoop = NegativeFeedback<Series<AnglePDControllerHAL, BicopterDynamicalModel>, AngleFeedbackAdapter>;
 
-type PositionFeedbackLoop = NegativeFeedback<Series<PositionTrackerToForceMoment, AngleFeedbackLoop>, PositionFeedbackAdapter>;
+type PositionFeedbackLoop = NegativeFeedback<Series<PositionTrackerToForceAngle, AngleFeedbackLoop>, PositionFeedbackAdapter>;
 
 #[derive(Clone)]
 struct PositionControlledBicopter {
@@ -299,7 +301,7 @@ pub fn main() {
 
     let angle_feedback_loop = NegativeFeedback::new(
         Series::new(
-            AnglePDControllerHAL { kp: 1000.0, kd: 2000.0 },
+            AnglePDControllerHAL { kp: 73469.4, kd: 12000.0 },
             BicopterDynamicalModel::new(
                 1000.0, 
                 1.0, 
@@ -311,13 +313,13 @@ pub fn main() {
     );
 
     let position_feedback_loop = NegativeFeedback::new(
-        Series::new(PositionTrackerToForceMoment { position_pids: Parallel::new(
-            PIDController { kp: 1.0, kd: 0.0, ki: 0.0 }, 
-            PIDController { kp: 1.0, kd: 0.0, ki: 0.1 }) }
+        Series::new(PositionTrackerToForceAngle { position_pids: Parallel::new(
+            PIDController { kp: 7.57, kd: 3.5, ki: 0.0 }, 
+            PIDController { kp: 12.67, kd: 4.21, ki: 2.5 }) }
             , angle_feedback_loop), PositionFeedbackAdapter{}
     );
 
-    let initial_state_vector: StateVector<PositionFeedbackLoop> = [0.0, 0.0].into_sv::<PositionTrackerToForceMoment>()
+    let initial_state_vector: StateVector<PositionFeedbackLoop> = [0.0, 0.0].into_sv::<PositionTrackerToForceAngle>()
         .series(
             [WID as f64/2.0, -HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0].into_sv::<AngleFeedbackLoop>()
         ).feedback([].into_sv::<PositionFeedbackAdapter>());
