@@ -179,7 +179,8 @@ pub fn main() {
         AngleFeedbackBicopter::new(
             NegativeFeedback::new(
                 Series::new(
-                    PDController { kp: 1000.0, kd: 2000.0 },
+                    //[1.8367346938775512e6 60000.0]
+                    PDController { kp: 73469.4, kd: 12000.0 },
                     BicopterDynamicalModel::new(
                         1000.0, 
                         1.0, 
