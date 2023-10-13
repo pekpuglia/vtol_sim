@@ -301,7 +301,7 @@ pub fn main() {
 
     let angle_feedback_loop = NegativeFeedback::new(
         Series::new(
-            AnglePDControllerHAL { kp: 73469.4, kd: 12000.0 },
+            AnglePDControllerHAL { kp: 18367.3 , kd: 6000.0 },
             BicopterDynamicalModel::new(
                 1000.0, 
                 1.0, 
@@ -314,8 +314,8 @@ pub fn main() {
 
     let position_feedback_loop = NegativeFeedback::new(
         Series::new(PositionTrackerToForceAngle { position_pids: Parallel::new(
-            PIDController { kp: 7.57, kd: 3.5, ki: 0.0 }, 
-            PIDController { kp: 12.67, kd: 4.21, ki: 2.5 }) }
+            PIDController { kp: 1.26, kd: 1.61, ki: 0.0 }, 
+            PIDController { kp: 2.66, kd: 1.75, ki: 0.73 }) }
             , angle_feedback_loop), PositionFeedbackAdapter{}
     );
 
