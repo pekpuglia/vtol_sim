@@ -168,6 +168,7 @@ impl Vehicle for AngleFeedbackBicopter {
 
 use super::bicopter_main;
 
+#[allow(unused)]
 pub fn main() {
 
     let ref_frame = ReferenceFrame::new_from_screen_frame(

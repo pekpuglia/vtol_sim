@@ -123,6 +123,7 @@ impl Vehicle for PlainBicopter {
     }
 }
 
+#[allow(unused)]
 pub fn main() {
 
     let ref_frame = ReferenceFrame::new_from_screen_frame(
