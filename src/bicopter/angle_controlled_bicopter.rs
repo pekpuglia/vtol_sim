@@ -1,7 +1,7 @@
-use crate::reference_frame::ReferenceFrame;
+use crate::{reference_frame::ReferenceFrame, controllers::PD};
 
 use super::*;
-use control_systems::{NegativeFeedback, Series};
+use control_systems::{NegativeFeedback, Series, Parallel};
 use derive_new::new;
 use nalgebra::Vector2;
 
@@ -18,6 +18,7 @@ impl BicopterForceAngleInputReceiver {
             let force = self.force_gain * (1.0 - (p.y)/HEI as f64);
 
             let angle = self.angle_gain * ((p.x)/WID as f64 - 1.0/2.0);
+            // 3o - thetadot? remover
             Some(dvector![force, angle, 0.0])
         } else {
             None
@@ -26,15 +27,12 @@ impl BicopterForceAngleInputReceiver {
 }
 
 #[derive(new, Clone)]
-pub struct PDController {
-    pub kp: f64,
-    pub kd: f64,
-}
+pub struct HAL;
 
-impl DynamicalSystem for PDController {
+impl DynamicalSystem for HAL {
     const STATE_VECTOR_SIZE: usize = 0;
 
-    const INPUT_SIZE      : usize = 3;
+    const INPUT_SIZE      : usize = 2;
 
     const OUTPUT_SIZE     : usize = 2;
 
@@ -48,10 +46,7 @@ impl DynamicalSystem for PDController {
         _x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         let force = u[0];
-
-        let theta_error = u[1];
-        let theta_dot = u[2];
-        let moment = self.kp * theta_error + self.kd * theta_dot;
+        let moment = u[1];
         let l_thrust = force / 2.0 + moment / 2.0;
         let r_thrust = force / 2.0 - moment / 2.0;
 
@@ -83,9 +78,17 @@ impl DynamicalSystem for AngleFeedbackAdapter {
     }
 }
 
+use control_systems::UnitySystem;
+
+type AngleController = Series<Parallel<UnitySystem<1>, crate::controllers::PD>, HAL>;
+
+type DirectPath = Series<AngleController, BicopterDynamicalModel>;
+
+type AngleControlledFeedback = NegativeFeedback<DirectPath, AngleFeedbackAdapter>;
+
 #[derive(new, Clone)]
 pub struct AngleFeedbackBicopter {
-    plant: NegativeFeedback<Series<PDController, BicopterDynamicalModel>, AngleFeedbackAdapter>,
+    plant: AngleControlledFeedback,
     #[new(value="dvector![
         WID as f64/2.0,
         -HEI as f64/2.0,
@@ -174,24 +177,39 @@ pub fn main() {
     let ref_frame = ReferenceFrame::new_from_screen_frame(
         &Vector2::x(), 
         &-Vector2::y(), 
-        &Vector2::new(0.0,0.0));
+        &Vector2::new(0.0,0.0)
+    );
+
+    let ang_controller: AngleController = Series::new(
+        Parallel::new(
+            UnitySystem{}, 
+            PD::new(73469.4, 12000.0)), 
+        HAL{}
+    );
+
+    let direct_path: DirectPath = Series::new(
+        ang_controller, 
+        BicopterDynamicalModel::new(
+                1000.0, 
+                1.0, 
+                100.0, 
+                40.0)
+    );
+
+    let angle_controlled_feedback: AngleControlledFeedback = NegativeFeedback::new(
+        direct_path, 
+        AngleFeedbackAdapter{}
+    );
+
+    let angle_feedback_bicopter = AngleFeedbackBicopter::new(
+        angle_controlled_feedback, 
+        ref_frame, 
+        BicopterForceAngleInputReceiver { 
+            force_gain: 200.0, 
+            angle_gain: -std::f64::consts::FRAC_PI_2}
+    );
 
     bicopter_main(
-        AngleFeedbackBicopter::new(
-            NegativeFeedback::new(
-                Series::new(
-                    //[1.8367346938775512e6 60000.0]
-                    PDController { kp: 73469.4, kd: 12000.0 },
-                    BicopterDynamicalModel::new(
-                        1000.0, 
-                        1.0, 
-                        100.0, 
-                        40.0
-                    )
-                ), 
-                AngleFeedbackAdapter::new()
-            ), ref_frame,
-            BicopterForceAngleInputReceiver { force_gain: 200.0, angle_gain: -std::f64::consts::FRAC_PI_2}
-        )
+        angle_feedback_bicopter
     )
 }

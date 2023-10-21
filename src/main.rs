@@ -5,6 +5,8 @@ mod background;
 
 mod ball;
 
+mod controllers;
+
 mod bicopter;
 
 //obs: player controller != (feedback) controller
@@ -20,5 +22,5 @@ mod bicopter;
 //add vtol
 //add rocket
 fn main() {
-    bicopter::position_controlled_bicopter::main()
+    bicopter::angle_controlled_bicopter::main()
 }
