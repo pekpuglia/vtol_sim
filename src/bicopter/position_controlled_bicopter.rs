@@ -1,12 +1,15 @@
-
 use std::ops::Add;
 
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 
-use super::*;
+use control_systems::UnitySystem;
 use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};
-use derive_new::new;
 use nalgebra::Vector2;
+
+use crate::controllers::{PID, PD};
+
+use super::*;
+use super::angle_controlled_bicopter::*;
 
 #[derive(Clone, Copy)]
 pub struct BicopterPositionInputReceiver {
@@ -25,79 +28,17 @@ impl BicopterPositionInputReceiver {
     }
 }
 
-#[derive(new, Clone)]
-pub struct AnglePDControllerHAL {
-    pub kp: f64,
-    pub kd: f64,
-}
-
-impl DynamicalSystem for AnglePDControllerHAL {
-    const STATE_VECTOR_SIZE: usize = 0;
-
-    const INPUT_SIZE      : usize = 3;
-
-    const OUTPUT_SIZE     : usize = 2;
-
-    fn xdot(&self, _t: f64, 
-        _x: nalgebra::DVector<f64>, 
-        _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        dvector![]
-    }
-
-    fn y(&self, _t: f64, 
-        _x: nalgebra::DVector<f64>, 
-        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        let force = u[0];
-
-        let theta_error = u[1];
-        let theta_dot = u[2];
-        let moment = self.kp * theta_error + self.kd * theta_dot;
-        //errado!!!
-        let l_thrust = force / 2.0 + moment / 2.0;
-        let r_thrust = force / 2.0 - moment / 2.0;
-
-        dvector![l_thrust, r_thrust]
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-struct PIDController {
-    kp: f64,
-    kd: f64,
-    ki: f64
-}
-
-impl DynamicalSystem for PIDController {
-    const STATE_VECTOR_SIZE: usize = 1;
-    //x, xdot
-    const INPUT_SIZE      : usize = 2;
-
-    const OUTPUT_SIZE     : usize = 1;
-
-    fn xdot(&self, t: f64, 
-        x: DVector<f64>, 
-        u: DVector<f64>) -> DVector<f64> {
-        dvector![u[0]]
-    }
-
-    fn y(&self, t: f64, 
-        x: DVector<f64>, 
-        u: DVector<f64>) -> DVector<f64> {
-        dvector![self.kp*u[0] + self.kd*u[1] + self.ki*x[0]]
-    }
-}
-
 #[derive(Clone, Copy)]
 struct PositionTrackerToForceAngle {
-    position_pids: Parallel<PIDController, PIDController>
+    position_pids: Parallel<PID, PID>
 }
 
 impl DynamicalSystem for PositionTrackerToForceAngle {
-    const STATE_VECTOR_SIZE: usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::STATE_VECTOR_SIZE;
+    const STATE_VECTOR_SIZE: usize = <Parallel<PID, PID> as DynamicalSystem>::STATE_VECTOR_SIZE;
 
-    const INPUT_SIZE      : usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::INPUT_SIZE;
+    const INPUT_SIZE      : usize = <Parallel<PID, PID> as DynamicalSystem>::INPUT_SIZE;
 
-    const OUTPUT_SIZE     : usize = <Parallel<PIDController, PIDController> as DynamicalSystem>::OUTPUT_SIZE + 1;
+    const OUTPUT_SIZE     : usize = <Parallel<PID, PID> as DynamicalSystem>::OUTPUT_SIZE + 1;
 
     fn xdot(&self, t: f64, 
         x: DVector<f64>, 
@@ -121,30 +62,6 @@ impl DynamicalSystem for PositionTrackerToForceAngle {
             theta,
             0.0
         ]
-    }
-}
-
-#[derive(new, Clone)]
-pub struct AngleFeedbackAdapter;
-
-impl DynamicalSystem for AngleFeedbackAdapter {
-    const STATE_VECTOR_SIZE: usize = 0;
-
-    const INPUT_SIZE      : usize = 6;
-
-    const OUTPUT_SIZE     : usize = 3;
-
-    fn xdot(&self, _t: f64, 
-        _x: nalgebra::DVector<f64>, 
-        _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        dvector![]
-    }
-
-    fn y(&self, _t: f64, 
-        _x: nalgebra::DVector<f64>, 
-        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        //força, angulo, v ang
-        dvector![0.0, u[2], u[5]]
     }
 }
 
@@ -177,9 +94,7 @@ impl DynamicalSystem for PositionFeedbackAdapter {
     }
 }
 
-type AngleFeedbackLoop = NegativeFeedback<Series<AnglePDControllerHAL, BicopterDynamicalModel>, AngleFeedbackAdapter>;
-
-type PositionFeedbackLoop = NegativeFeedback<Series<PositionTrackerToForceAngle, AngleFeedbackLoop>, PositionFeedbackAdapter>;
+type PositionFeedbackLoop = NegativeFeedback<Series<PositionTrackerToForceAngle, AngleControlledFeedback>, PositionFeedbackAdapter>;
 
 #[derive(Clone)]
 struct PositionControlledBicopter {
@@ -299,29 +214,37 @@ pub fn main() {
         &-Vector2::y(), 
         &Vector2::new(0.0,0.0));
 
-    let angle_feedback_loop = NegativeFeedback::new(
-        Series::new(
-            AnglePDControllerHAL { kp: 18367.3 , kd: 6000.0 },
+        let ang_controller: AngleController = Series::new(
+            Parallel::new(
+                UnitySystem{}, 
+                PD::new(18367.3, 6000.0)), 
+            HAL{}
+        );
+    
+        let angle_direct_path: AngleDirectPath = Series::new(
+            ang_controller, 
             BicopterDynamicalModel::new(
-                1000.0, 
-                1.0, 
-                100.0, 
-                40.0
-            )
-        ), 
-        AngleFeedbackAdapter::new()
-    );
+                    1000.0, 
+                    1.0, 
+                    100.0, 
+                    40.0)
+        );
+    
+        let angle_controlled_feedback: AngleControlledFeedback = NegativeFeedback::new(
+            angle_direct_path, 
+            AngleFeedbackAdapter{}
+        );
 
     let position_feedback_loop = NegativeFeedback::new(
         Series::new(PositionTrackerToForceAngle { position_pids: Parallel::new(
-            PIDController { kp: 1.26, kd: 1.61, ki: 0.0 }, 
-            PIDController { kp: 2.66, kd: 1.75, ki: 0.73 }) }
-            , angle_feedback_loop), PositionFeedbackAdapter{}
+            PID::new(1.26, 0.0, 1.61), 
+            PID::new(2.66, 0.73, 1.75)) }
+            , angle_controlled_feedback), PositionFeedbackAdapter{}
     );
 
     let initial_state_vector: StateVector<PositionFeedbackLoop> = [0.0, 0.0].into_sv::<PositionTrackerToForceAngle>()
         .series(
-            [WID as f64/2.0, -HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0].into_sv::<AngleFeedbackLoop>()
+            [WID as f64/2.0, -HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0].into_sv::<AngleControlledFeedback>()
         ).feedback([].into_sv::<PositionFeedbackAdapter>());
 
     bicopter_main(PositionControlledBicopter{
