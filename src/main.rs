@@ -14,7 +14,7 @@ mod bicopter;
 //todo
 //add config file
 //add ui with control options
-//make position-controlled bicopter
+//saturations??
 //zoom?
 //make reference frames safer
 //eliminate dvector? enum map?
@@ -22,5 +22,5 @@ mod bicopter;
 //add vtol
 //add rocket
 fn main() {
-    bicopter::angle_controlled_bicopter::main()
+    bicopter::position_controlled_bicopter::main()
 }
