@@ -80,11 +80,11 @@ impl DynamicalSystem for AngleFeedbackAdapter {
 
 use control_systems::UnitySystem;
 
-type AngleController = Series<Parallel<UnitySystem<1>, crate::controllers::PD>, HAL>;
+pub type AngleController = Series<Parallel<UnitySystem<1>, crate::controllers::PD>, HAL>;
 
-type DirectPath = Series<AngleController, BicopterDynamicalModel>;
+pub type AngleDirectPath = Series<AngleController, BicopterDynamicalModel>;
 
-type AngleControlledFeedback = NegativeFeedback<DirectPath, AngleFeedbackAdapter>;
+pub type AngleControlledFeedback = NegativeFeedback<AngleDirectPath, AngleFeedbackAdapter>;
 
 #[derive(new, Clone)]
 pub struct AngleFeedbackBicopter {
@@ -187,7 +187,7 @@ pub fn main() {
         HAL{}
     );
 
-    let direct_path: DirectPath = Series::new(
+    let direct_path: AngleDirectPath = Series::new(
         ang_controller, 
         BicopterDynamicalModel::new(
                 1000.0, 
