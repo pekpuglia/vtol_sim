@@ -16,12 +16,13 @@ impl BicopterForceMomentInputReceiver {
     fn thrusts(&self, ev: &egaku2d::glutin::event::Event<'_, ()>) -> Option<nalgebra::DVector<f64>> {
         if let Event::WindowEvent {event: WindowEvent::CursorMoved { device_id: _, position: p, .. }, window_id: _} = ev {
             
+            //p.y p baixo
             let force = self.force_gain * (1.0 - (p.y)/HEI as f64);
 
             let moment = self.moment_gain * ((p.x)/WID as f64 - 1.0/2.0);
 
-            let l_thrust = force / 2.0 + moment / 2.0;
-            let r_thrust = force / 2.0 - moment / 2.0;
+            let l_thrust = force / 2.0 - moment / 2.0;
+            let r_thrust = force / 2.0 + moment / 2.0;
 
             Some(dvector![l_thrust, r_thrust])
         } else {
