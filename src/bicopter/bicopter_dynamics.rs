@@ -86,6 +86,7 @@ impl DynamicalSystem for BicopterDynamicalModel {
 
     const OUTPUT_SIZE     : usize = 6;
     //assume sistema x p direita, y p cima!
+    //theta em sentido anti-horário
     fn xdot(&self, _t: f64, 
         x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
@@ -96,7 +97,7 @@ impl DynamicalSystem for BicopterDynamicalModel {
             x[5],
             - (u[0] + u[1]) * x[2].sin() / self.mass,
               (u[0] + u[1]) * x[2].cos() / self.mass - self.gravity,
-            self.prop_dist * (u[0] - u[1]) / self.inertia
+            self.prop_dist * (u[1] - u[0]) / (2.0 * self.inertia)
         ]
     }
 
