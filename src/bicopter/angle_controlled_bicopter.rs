@@ -47,8 +47,8 @@ impl DynamicalSystem for HAL {
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         let force = u[0];
         let moment = u[1];
-        let l_thrust = force / 2.0 + moment / 2.0;
-        let r_thrust = force / 2.0 - moment / 2.0;
+        let l_thrust = force / 2.0 - moment / 2.0;
+        let r_thrust = force / 2.0 + moment / 2.0;
 
         dvector![l_thrust, r_thrust]
     }
@@ -138,9 +138,13 @@ impl Component for AngleFeedbackBicopter {
             self.update(dt as f64);
 
         }
+        //algo errado aqui!!!  hb
         let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
         let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
-        let thrusts = self.plant.dir_ref().ds1_ref().y(0.0, dvector![], error.clone());
+        let thrusts = self.plant
+            .dir_ref()
+            .ds1_ref()
+            .y(0.0, dvector![], error.clone());
 
         self.plant
             .dir_ref()
@@ -183,7 +187,7 @@ pub fn main() {
     let ang_controller: AngleController = Series::new(
         Parallel::new(
             UnitySystem{}, 
-            PD::new(73469.4, 12000.0)), 
+            PD::new(18367.3, 6000.0)), 
         HAL{}
     );
 
