@@ -138,8 +138,6 @@ impl Component for PositionControlledBicopter {
             self.update(dt as f64);
         }
 
-        dbg!(&self.x);
-
         let sv = StateVector::<PositionFeedbackLoop>::new(self.x.clone());
 
         let position_error = self.system.error(0.0, sv.data.clone(), self.u.clone());
