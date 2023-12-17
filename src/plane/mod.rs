@@ -76,7 +76,7 @@ impl Component for Plane {
             self.update(dt as f64);
         }
 
-        dbg!(&self.x, &self.u);
+        dbg!(AerodynamicModel::alpha(&self.x));
 
         match self.x.iter().any(|val| val.is_nan()) {
             true => {panic!("wtf nan")},
@@ -112,11 +112,11 @@ pub fn main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
     let aero = AerodynamicModel::new(
-        LiftModel::new(5.0, 0.035, 0.314, 0.44),
-        MomentModel::new(-0.1, -0.0, -0.01, -0.7),
+        LiftModel::new(5.0, -0.035, 0.314, 0.0),
+        MomentModel::new(-0.1, -0.5, -0.1, -0.7),
         DragModel::new(0.03, 0.005),
         1.225,
-        1.0,
+        0.1,
         1.0
     );
 
@@ -136,13 +136,13 @@ pub fn main() {
                         3.0, 
                         80.0,
                         0.25,
-                        -0.5,
+                        -0.67,
                         aero,
                         100.0,
                         4.0,
                         1e-1
                         ),
-                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 10.0, elevator_gain: 1.0 },
+                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 500.0, elevator_gain: 1.0 },
                     ref_frame: ReferenceFrame::new_from_screen_frame(
                         &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
                     u: dvector![0.0, 0.0],

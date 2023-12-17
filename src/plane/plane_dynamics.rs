@@ -1,3 +1,5 @@
+use std::f64::consts::{PI, FRAC_PI_2};
+
 use control_systems::DynamicalSystem;
 use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, ComplexField, Rotation2};
 
@@ -51,8 +53,13 @@ pub struct AerodynamicModel {
     cref: f64
 }
 impl AerodynamicModel {
-    fn alpha(x: &DVector<f64>) -> f64 {
-        x[2] - x[4].atan2(x[3])
+    pub fn alpha(x: &DVector<f64>) -> f64 {
+        let body_direction = Vector2::new(x[2].cos(), x[2].sin());
+
+        let velocity = vector![x[3], x[4]];
+
+        //angle(u, v) * sign(u x v)
+        body_direction.angle(&velocity) * (velocity.x * body_direction.y - velocity.y * body_direction.x).signum()
     }
 }
 
@@ -147,7 +154,7 @@ impl PlaneDynamicalModel {
                 frame, 
                 GeometryTypes::new_arrow(
                     main_leading_edge, 
-                    main_leading_edge + vector![u[0]*50.0, 0.0], 
+                    main_leading_edge + vector![u[0], 0.0], 
                     2.0)
             )
         ]
@@ -170,11 +177,11 @@ impl DynamicalSystem for PlaneDynamicalModel {
 
         let qS = 0.5 * self.aero_model.rho * self.aero_model.sref * (x[3].powi(2) + x[4].powi(2)).sqrt();
 
-        let force = vector![0.0, 0.0]
+        let force = 
             // lift
-            // qS * cl * vector![-x[4], x[3]] + 
-            // - qS * cd * vector![x[3], x[4]] +
-            // u[0] * Rotation2::new(x[2]).matrix() * Vector2::x()
+            qS * cl * vector![-x[4], x[3]] +
+            - qS * cd * vector![x[3], x[4]] +
+            u[0] * Rotation2::new(x[2]).matrix() * Vector2::x()
         ;
 
         let moment = qS * cm * self.aero_model.cref + qS * cl * self.aero_model.cref * (self.aero_model.moment.x_np_c - self.x_cg_c);

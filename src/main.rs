@@ -25,6 +25,7 @@ mod plane;
 //add plane
 //add vtol
 //add rocket
+//use real units?
 fn main() {
     plane::main()
 }
