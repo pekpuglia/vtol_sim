@@ -226,24 +226,14 @@ md"""
 ### Burocracia pra montar a malha de controle de ângulo
 """
 
-# ╔═╡ 5950a839-e640-4a5b-bada-6383dd63f605
-theta_error = sumblock("theta_error = theta_ref - theta_feedback");
-
-# ╔═╡ cb3f8d72-1d4c-46c4-a06e-754149fe1929
-theta_dot_inverter = sumblock("minus_thetadot = - thetadot_feedback");
-
 # ╔═╡ 6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
-moment_pd = named_ss(ss(Ktheta), u = [:theta, :thetadot], y=[:M]);
+stabilized_theta_feedback = feedback(linear_model * hal, [
+	zeros(1, 6)
+	0 0 Ktheta[1] 0 0 Ktheta[2]
+])
 
-# ╔═╡ 5b22ac8a-5f01-4e2b-b232-908f8dfefe38
-angle_feedback = connect([linear_model * hal, moment_pd, theta_error, theta_dot_inverter],
-[
-    :M => :M
-    :theta => :theta_feedback
-    :theta_error => :theta
-    :thetadot => :thetadot_feedback
-    :minus_thetadot => :thetadot
-], w1 = [:F, :theta_ref], z1=[:x, :y, :theta, :xdot, :ydot, :thetadot])
+# ╔═╡ cfc1c105-2eaf-4d4f-9b66-242801aa357c
+angle_feedback = stabilized_theta_feedback * named_ss(append(ss(1), ss(Ktheta[1])), u=[:F_ext, :theta_ref], y=[:F, :M])
 
 # ╔═╡ 42dc7599-941a-4560-b82d-1c6e78ce7abc
 md"""
@@ -257,10 +247,13 @@ md"""
 poles(angle_feedback)
 
 # ╔═╡ 7d28ec08-ba37-4599-9f8f-a59b2cde334d
-theta_step_response = step(angle_feedback[3, 2], 1);
+theta_step_response = step(angle_feedback[3, 2], 10);
 
 # ╔═╡ 346fd3aa-16cd-4a45-a310-18a83609e8a8
 plot(theta_step_response)
+
+# ╔═╡ 95fc4d93-3e98-492a-948b-7589ad058080
+dcgain(angle_feedback[3, 2] |> sminreal)
 
 # ╔═╡ 1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 md"""
@@ -283,7 +276,7 @@ end
 linearized_fxfy_matrix = ForwardDiff.jacobian(fxfy_to_ftheta, [0, bicopter.mass*bicopter.gravity])
 
 # ╔═╡ 660b1458-9072-4dc3-a27b-5540f885728f
-fxfy_to_ftheta_sys = named_ss(ss(linearized_fxfy_matrix), u=[:Fx, :Fy], y=[:F, :theta_ref])
+fxfy_to_ftheta_sys = named_ss(ss(linearized_fxfy_matrix), u=[:Fx, :Fy], y=[:F_ext, :theta_ref])
 
 # ╔═╡ df0be27e-071a-4f7e-97ce-6235330a1b3b
 md"""
@@ -318,6 +311,9 @@ x_error = sumblock("x_error = x_ref - x ");
 # ╔═╡ cb3850fc-4142-464b-beea-003330404477
 minus_xdot = sumblock("minus_xdot = - xdot");
 
+# ╔═╡ 9de294a5-4b12-4505-8e10-a87cbb87b697
+
+
 # ╔═╡ d49da2df-44b0-40fa-92c9-46468b573640
 md"""
 Dessa vez, vamos usar um controlador PID ao invés de PD, por maior generalidade. Na direção x, o termo integral não é extremamente necessário, mas na direção y sim (ver adiante).
@@ -339,6 +335,9 @@ Não faz sentido alocar polos com PID por _motivos_. Então vamos ajustar os 3 g
 
 # ╔═╡ ee8ff28f-1635-4212-bf2c-5d75c76dadd8
 xpid = pid_block(kix, kpx, kdx, :x);
+
+# ╔═╡ 0566407d-c042-447b-bcda-c9d2778ee25a
+feedback(x_sys, xpid, )
 
 # ╔═╡ f62f8abf-ab48-4154-8c71-4cd4bff0b161
 x_feedback_manual = connect([x_sys, xpid, x_error, minus_xdot],
@@ -2525,26 +2524,27 @@ version = "1.4.1+1"
 # ╟─3e4b0dde-14b9-42c4-9973-bc12dbccedfd
 # ╠═e4b9e919-a5ef-4d90-abde-abedde4a60ce
 # ╟─6a8231e6-ccdd-473a-9fac-7b1d82189ac8
-# ╠═5950a839-e640-4a5b-bada-6383dd63f605
-# ╠═cb3f8d72-1d4c-46c4-a06e-754149fe1929
 # ╠═6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
-# ╠═5b22ac8a-5f01-4e2b-b232-908f8dfefe38
+# ╠═cfc1c105-2eaf-4d4f-9b66-242801aa357c
 # ╟─42dc7599-941a-4560-b82d-1c6e78ce7abc
 # ╠═d22f2119-fee9-44b8-bc4c-04dee7a7f065
 # ╠═7d28ec08-ba37-4599-9f8f-a59b2cde334d
 # ╠═346fd3aa-16cd-4a45-a310-18a83609e8a8
+# ╠═95fc4d93-3e98-492a-948b-7589ad058080
 # ╟─1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 # ╠═8d8c6806-c2b1-4d3c-8083-8f96a6e71d9b
 # ╠═98639c8e-7eb1-4685-a098-d54f0e1d11fe
 # ╠═660b1458-9072-4dc3-a27b-5540f885728f
-# ╠═df0be27e-071a-4f7e-97ce-6235330a1b3b
+# ╟─df0be27e-071a-4f7e-97ce-6235330a1b3b
 # ╠═8dc26fd9-ff9b-4662-9a39-322036ae74b9
-# ╠═7a66b28f-e78e-44df-8963-5e1f41e9ff99
+# ╟─7a66b28f-e78e-44df-8963-5e1f41e9ff99
 # ╠═4eb69208-1d8c-4f69-99d9-6e3d79b2c868
 # ╠═67b15bd9-94e2-474d-9328-43cdf2cf5aec
 # ╠═f0c95638-73e0-452a-aac7-c1ff469c158c
 # ╠═cb3850fc-4142-464b-beea-003330404477
 # ╠═ee8ff28f-1635-4212-bf2c-5d75c76dadd8
+# ╠═0566407d-c042-447b-bcda-c9d2778ee25a
+# ╠═9de294a5-4b12-4505-8e10-a87cbb87b697
 # ╠═f62f8abf-ab48-4154-8c71-4cd4bff0b161
 # ╟─d49da2df-44b0-40fa-92c9-46468b573640
 # ╠═2a534cbf-2a89-42d9-bbe0-4ffdaf7808d0
