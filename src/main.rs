@@ -21,6 +21,7 @@ mod plane;
 //zoom?
 //make reference frames safer
 //eliminate dvector? enum map?
+//abstract world, vehicle - change "components field"
 //add plane
 //add vtol
 //add rocket
