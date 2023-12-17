@@ -107,9 +107,10 @@ impl PlaneDynamicalModel {
             tail_leading_edge - vector![self.tail_chord * (1.0 - self.elevator_x_c), 0.0]
         ;
 
+        //positivo pra baixo!
         let elevator_trailing_edge = 
             tail_elevator_hinge + self.tail_chord * self.elevator_x_c * Vector2::new(
-                -u[1].cos(), u[1].sin()
+                -u[1].cos(), -u[1].sin()
         );
 
         vec![
