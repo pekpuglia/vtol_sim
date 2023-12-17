@@ -1,18 +1,75 @@
-use nalgebra::{Matrix2, Vector2, vector};
+use control_systems::DynamicalSystem;
+use nalgebra::{Matrix2, Vector2, vector, dvector, DVector};
 
 use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::{SCREEN_FRAME, ReferenceFrame}};
 
+#[derive(derive_new::new)]
+pub struct LiftModel {
+    cl_a: f64,
+    alpha_0: f64,
+    alpha_m: f64,
+    cl_delta: f64,
+}
+impl LiftModel {
+    fn cl(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
+        self.cl_a * (AerodynamicModel::alpha(x) - self.alpha_0)
+    }
+}
 
+//neutral point
+#[derive(derive_new::new)]
+pub struct MomentModel {
+    cm_0: f64,
+    cm_delta: f64,
+    cm_q: f64,
+    x_np_c: f64,
+}
+impl MomentModel {
+    fn cm(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
+        self.cm_0
+    }
+}
+
+#[derive(derive_new::new)]
+pub struct DragModel {
+    cd_0: f64,
+    ki: f64,
+}
+impl DragModel {
+    fn cd(&self, x: DVector<f64>, u: &DVector<f64>) -> f64 {
+        self.cd_0
+    }
+}
+
+#[derive(derive_new::new)]
+pub struct AerodynamicModel {
+    lift: LiftModel,
+    moment: MomentModel,
+    drag: DragModel,
+    rho: f64,
+    sref: f64,
+    cref: f64
+}
+impl AerodynamicModel {
+    fn alpha(x: &DVector<f64>) -> f64 {
+        x[2] - x[4].atan2(x[3])
+    }
+}
 
 #[derive(derive_new::new)]
 pub struct PlaneDynamicalModel {
+    //graphical parameters
     main_chord: f64,
     main_thickness: f64,
     tail_chord: f64,
     tail_thickness: f64,
     tail_le_to_main_le: f64,
     elevator_x_c: f64,
-    x_cg_c: f64
+    x_cg_c: f64,
+    aero_model: AerodynamicModel,
+    gravity: f64,
+    mass: f64,
+    inertia: f64
 }
 
 
@@ -93,5 +150,27 @@ impl PlaneDynamicalModel {
                     2.0)
             )
         ]
+    }
+}
+
+impl DynamicalSystem for PlaneDynamicalModel {
+    const STATE_VECTOR_SIZE: usize = 6;
+
+    const INPUT_SIZE      : usize = 2;
+
+    const OUTPUT_SIZE     : usize = 6;
+
+    fn xdot(&self, t: f64, 
+        x: nalgebra::DVector<f64>, 
+        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+        dvector![
+
+        ]
+    }
+
+    fn y(&self, t: f64, 
+        x: nalgebra::DVector<f64>, 
+        u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
+        x
     }
 }

@@ -7,7 +7,7 @@ use nalgebra::{DVector, vector, dvector, Vector2};
 
 use crate::{bicopter::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{SCREEN_FRAME, ReferenceFrame}, background::Background};
 
-use self::plane_dynamics::PlaneDynamicalModel;
+use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 
 const WID: f32 = 600.0;
 
@@ -73,6 +73,15 @@ impl Vehicle for Plane {
 pub fn main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
+    let aero = AerodynamicModel::new(
+        LiftModel::new(5.0, 0.035, 0.314, 0.44),
+        MomentModel::new(-0.1, -1.46, 0.0, 0.7),
+        DragModel::new(0.03, 0.005),
+        1.225,
+        1.0,
+        1.0
+    );
+
     let mut drawer = Drawer::new(
         60, 
         WID as usize, 
@@ -89,7 +98,12 @@ pub fn main() {
                         3.0, 
                         80.0,
                         0.25,
-                        -0.5),
+                        -0.5,
+                        aero,
+                        1.0,
+                        1.0,
+                        1.0
+                        ),
                     thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 1.0, elevator_gain: 1.0 },
                     ref_frame: ReferenceFrame::new_from_screen_frame(
                         &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
