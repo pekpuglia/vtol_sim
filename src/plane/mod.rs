@@ -26,7 +26,7 @@ impl PlaneThrustAndElevatorInputReceiver {
             
             let thrust = (1.0 - p.y / HEI as f64) * self.thrust_gain;
 
-            let elevator = p.x / WID as f64 * self.elevator_gain;
+            let elevator = (p.x / WID as f64 - 0.5) * self.elevator_gain;
 
             Some(dvector![thrust, elevator])
         } else {
@@ -87,7 +87,8 @@ pub fn main() {
                         5.0, 
                         20.0, 
                         3.0, 
-                        80.0, 
+                        80.0,
+                        0.25,
                         -0.5),
                     thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 1.0, elevator_gain: 1.0 },
                     ref_frame: ReferenceFrame::new_from_screen_frame(

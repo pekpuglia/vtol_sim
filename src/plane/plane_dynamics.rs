@@ -11,6 +11,7 @@ pub struct PlaneDynamicalModel {
     tail_chord: f64,
     tail_thickness: f64,
     tail_le_to_main_le: f64,
+    elevator_x_c: f64,
     x_cg_c: f64
 }
 
@@ -45,9 +46,14 @@ impl PlaneDynamicalModel {
             main_leading_edge - vector![self.tail_le_to_main_le, 0.0]
         ;
 
-        let tail_trailing_edge = 
-            tail_leading_edge - vector![self.tail_chord, 0.0]
+        let tail_elevator_hinge = 
+            tail_leading_edge - vector![self.tail_chord * (1.0 - self.elevator_x_c), 0.0]
         ;
+
+        let elevator_trailing_edge = 
+            tail_elevator_hinge + self.tail_chord * self.elevator_x_c * Vector2::new(
+                -u[1].cos(), u[1].sin()
+        );
 
         vec![
             //main wing
@@ -64,8 +70,17 @@ impl PlaneDynamicalModel {
                 [1.0, 1.0, 1.0, 1.0], 
                 frame, 
                 GeometryTypes::new_line(
-                    tail_trailing_edge, 
+                    tail_elevator_hinge, 
                     tail_leading_edge, 
+                    self.tail_thickness as f32)
+            ),
+            //elevator
+            Geometry::new(
+                [0.0, 0.0, 1.0, 1.0], 
+                frame, 
+                GeometryTypes::new_arrow(
+                    tail_elevator_hinge, 
+                    tail_elevator_hinge + 5.0 * (elevator_trailing_edge - tail_elevator_hinge), 
                     self.tail_thickness as f32)
             ),
             //thrust
