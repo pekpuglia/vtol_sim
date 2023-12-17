@@ -1,5 +1,7 @@
 mod plane_dynamics;
 
+use std::f64::consts::PI;
+
 use nalgebra::{DVector, vector, dvector, Vector2};
 
 use crate::{bicopter::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{SCREEN_FRAME, ReferenceFrame}, background::Background};
@@ -20,7 +22,7 @@ struct Plane {
 impl Component for Plane {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
         self.model
-            .body_centered_geometry(&self.x, &self.u, &SCREEN_FRAME)
+            .body_centered_geometry(&self.x, &self.u, &self.ref_frame)
             .iter()
             .map(|geom| geom.draw(canvas))
             .last();
@@ -60,10 +62,11 @@ pub fn main() {
                         3.0, 
                         80.0, 
                         -0.5),
-                    ref_frame: SCREEN_FRAME.clone(),
+                    ref_frame: ReferenceFrame::new_from_screen_frame(
+                        &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
                     u: dvector![0.0, 0.0],
                     x: dvector![
-                        WID as f64 / 2.0, HEI as f64 / 2.0, 0.0, 
+                        0.0, 0.0, PI / 6.0, 
                         0.0, 0.0, 0.0]
                 }, 
                 background: Background::new(
