@@ -3,11 +3,14 @@ mod reference_frame;
 mod geometry;
 mod background;
 
-mod ball;
 
 mod controllers;
 
+mod ball;
+
 mod bicopter;
+
+mod plane;
 
 //obs: player controller != (feedback) controller
 
@@ -22,5 +25,5 @@ mod bicopter;
 //add vtol
 //add rocket
 fn main() {
-    bicopter::position_controlled_bicopter::main()
+    plane::main()
 }
