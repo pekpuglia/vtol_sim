@@ -67,6 +67,15 @@ impl PlaneDynamicalModel {
                     tail_trailing_edge, 
                     tail_leading_edge, 
                     self.tail_thickness as f32)
+            ),
+            //thrust
+            Geometry::new(
+                [1.0, 0.0, 0.0, 1.0], 
+                frame, 
+                GeometryTypes::new_arrow(
+                    main_leading_edge, 
+                    main_leading_edge + vector![u[0]*50.0, 0.0], 
+                    2.0)
             )
         ]
     }

@@ -2,6 +2,7 @@ mod plane_dynamics;
 
 use std::f64::consts::PI;
 
+use egaku2d::glutin::event::{Event, WindowEvent};
 use nalgebra::{DVector, vector, dvector, Vector2};
 
 use crate::{bicopter::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{SCREEN_FRAME, ReferenceFrame}, background::Background};
@@ -12,8 +13,31 @@ const WID: f32 = 600.0;
 
 const HEI: f32 = 480.0;
 
+//todo
+//abstract input receivers!!
+struct PlaneThrustAndElevatorInputReceiver {
+    thrust_gain: f64,
+    elevator_gain: f64
+}
+
+impl PlaneThrustAndElevatorInputReceiver {
+    fn u(&self, ev: &Event<'_, ()>) -> Option<DVector<f64>> {
+        if let Event::WindowEvent {event: WindowEvent::CursorMoved { device_id: _, position: p, .. }, window_id: _} = ev {
+            
+            let thrust = (1.0 - p.y / HEI as f64) * self.thrust_gain;
+
+            let elevator = p.x / WID as f64 * self.elevator_gain;
+
+            Some(dvector![thrust, elevator])
+        } else {
+            None
+        }
+    }
+}
+
 struct Plane {
     model: plane_dynamics::PlaneDynamicalModel,
+    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver,
     x: DVector<f64>,
     u: DVector<f64>,
     ref_frame: ReferenceFrame
@@ -29,7 +53,10 @@ impl Component for Plane {
     }
 
     fn receive_event(&mut self, ev: &egaku2d::glutin::event::Event<'_, ()>) {
-        ()
+        match self.thrust_elevator_input.u(ev) {
+            Some(u) => {self.u = u;},
+            None => (),
+        }
     }
 }
 
@@ -62,6 +89,7 @@ pub fn main() {
                         3.0, 
                         80.0, 
                         -0.5),
+                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 1.0, elevator_gain: 1.0 },
                     ref_frame: ReferenceFrame::new_from_screen_frame(
                         &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
                     u: dvector![0.0, 0.0],
