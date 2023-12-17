@@ -23,16 +23,16 @@ pub trait Vehicle {
     fn x(&self) -> &DVector<f64>;
 }
 
-enum CameraOptions {
+pub enum CameraOptions {
     VehicleCentered,
     Fixed
 }
 
-struct World<VehicleType> {
-    bicopter: VehicleType,
-    background: Background,
-    camera_option: CameraOptions,
-    camera_option_toggle: bool
+pub struct World<VehicleType> {
+    pub bicopter: VehicleType,
+    pub background: Background,
+    pub camera_option: CameraOptions,
+    pub camera_option_toggle: bool
 }
 
 impl<VehicleType: Component + Vehicle> Component for World<VehicleType> {
