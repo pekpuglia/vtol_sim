@@ -1,9 +1,11 @@
 mod plane_dynamics;
 
-use std::f64::consts::PI;
+use std::{f64::consts::PI, alloc::System};
 
+use control_systems::DynamicalSystem;
 use egaku2d::glutin::event::{Event, WindowEvent};
 use nalgebra::{DVector, vector, dvector, Vector2};
+use ode_solvers::Rk4;
 
 use crate::{bicopter::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{SCREEN_FRAME, ReferenceFrame}, background::Background};
 
@@ -15,6 +17,7 @@ const HEI: f32 = 480.0;
 
 //todo
 //abstract input receivers!!
+#[derive(Clone, Copy)]
 struct PlaneThrustAndElevatorInputReceiver {
     thrust_gain: f64,
     elevator_gain: f64
@@ -35,6 +38,7 @@ impl PlaneThrustAndElevatorInputReceiver {
     }
 }
 
+#[derive(Clone)]
 struct Plane {
     model: plane_dynamics::PlaneDynamicalModel,
     thrust_elevator_input: PlaneThrustAndElevatorInputReceiver,
@@ -43,8 +47,42 @@ struct Plane {
     ref_frame: ReferenceFrame
 }
 
+impl Plane {
+    fn update(&mut self, dt: f64) {
+        let mut stepper = Rk4::new(
+            self.clone(), 
+            0.0, 
+            ode_solvers::DVector::from_row_slice(self.x.as_slice()), 
+            dt, 
+            dt/5.0);
+
+        let _stats = stepper.integrate();
+
+        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
+    }
+}
+
+impl ode_solvers::System<ode_solvers::DVector<f64>> for Plane {
+    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
+        dy.copy_from_slice(
+            self.model.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice()
+        )
+    }
+}
+
 impl Component for Plane {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
+        if !paused {
+            self.update(dt as f64);
+        }
+
+        dbg!(&self.x, &self.u);
+
+        match self.x.iter().any(|val| val.is_nan()) {
+            true => {panic!("wtf nan")},
+            false => ()
+        };
+
         self.model
             .body_centered_geometry(&self.x, &self.u, &self.ref_frame)
             .iter()
@@ -75,7 +113,7 @@ pub fn main() {
 
     let aero = AerodynamicModel::new(
         LiftModel::new(5.0, 0.035, 0.314, 0.44),
-        MomentModel::new(-0.1, -1.46, 0.0, 0.7),
+        MomentModel::new(-0.1, -0.0, -0.01, -0.7),
         DragModel::new(0.03, 0.005),
         1.225,
         1.0,
@@ -100,11 +138,11 @@ pub fn main() {
                         0.25,
                         -0.5,
                         aero,
-                        1.0,
-                        1.0,
-                        1.0
+                        100.0,
+                        4.0,
+                        1e-1
                         ),
-                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 1.0, elevator_gain: 1.0 },
+                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 10.0, elevator_gain: 1.0 },
                     ref_frame: ReferenceFrame::new_from_screen_frame(
                         &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
                     u: dvector![0.0, 0.0],

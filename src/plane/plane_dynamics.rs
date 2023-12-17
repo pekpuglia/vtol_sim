@@ -1,9 +1,9 @@
 use control_systems::DynamicalSystem;
-use nalgebra::{Matrix2, Vector2, vector, dvector, DVector};
+use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, ComplexField, Rotation2};
 
 use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::{SCREEN_FRAME, ReferenceFrame}};
 
-#[derive(derive_new::new)]
+#[derive(derive_new::new, Clone, Copy)]
 pub struct LiftModel {
     cl_a: f64,
     alpha_0: f64,
@@ -17,7 +17,7 @@ impl LiftModel {
 }
 
 //neutral point
-#[derive(derive_new::new)]
+#[derive(derive_new::new, Clone, Copy)]
 pub struct MomentModel {
     cm_0: f64,
     cm_delta: f64,
@@ -26,22 +26,22 @@ pub struct MomentModel {
 }
 impl MomentModel {
     fn cm(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
-        self.cm_0
+        self.cm_0 + self.cm_delta * u[1] + self.cm_q * x[5]
     }
 }
 
-#[derive(derive_new::new)]
+#[derive(derive_new::new, Clone, Copy)]
 pub struct DragModel {
     cd_0: f64,
     ki: f64,
 }
 impl DragModel {
-    fn cd(&self, x: DVector<f64>, u: &DVector<f64>) -> f64 {
+    fn cd(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
         self.cd_0
     }
 }
 
-#[derive(derive_new::new)]
+#[derive(derive_new::new, Clone, Copy)]
 pub struct AerodynamicModel {
     lift: LiftModel,
     moment: MomentModel,
@@ -56,7 +56,7 @@ impl AerodynamicModel {
     }
 }
 
-#[derive(derive_new::new)]
+#[derive(derive_new::new, Clone, Copy)]
 pub struct PlaneDynamicalModel {
     //graphical parameters
     main_chord: f64,
@@ -164,8 +164,30 @@ impl DynamicalSystem for PlaneDynamicalModel {
     fn xdot(&self, t: f64, 
         x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        dvector![
+        let cl = self.aero_model.lift.cl(&x, &u);
+        let cd = self.aero_model.drag.cd(&x, &u);
+        let cm = self.aero_model.moment.cm(&x, &u);
 
+        let qS = 0.5 * self.aero_model.rho * self.aero_model.sref * (x[3].powi(2) + x[4].powi(2)).sqrt();
+
+        let force = vector![0.0, 0.0]
+            // lift
+            // qS * cl * vector![-x[4], x[3]] + 
+            // - qS * cd * vector![x[3], x[4]] +
+            // u[0] * Rotation2::new(x[2]).matrix() * Vector2::x()
+        ;
+
+        let moment = qS * cm * self.aero_model.cref + qS * cl * self.aero_model.cref * (self.aero_model.moment.x_np_c - self.x_cg_c);
+
+        // let moment = 0.0;
+
+        dvector![
+            x[3],
+            x[4],
+            x[5],
+            force.x / self.mass,
+            force.y / self.mass - self.gravity,
+            moment / self.inertia
         ]
     }
 
