@@ -112,9 +112,9 @@ pub fn main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
     let aero = AerodynamicModel::new(
-        LiftModel::new(5.0, -0.035, 0.314, 0.0),
+        LiftModel::new(5.0, -0.035, 0.314, 0.1),
         MomentModel::new(-0.1, -0.5, -0.1, -0.7),
-        DragModel::new(0.03, 0.005),
+        DragModel::new(0.03, 0.005, 0.005),
         1.225,
         0.1,
         1.0

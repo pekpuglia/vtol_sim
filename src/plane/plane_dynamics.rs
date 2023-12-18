@@ -35,11 +35,13 @@ impl MomentModel {
 #[derive(derive_new::new, Clone, Copy)]
 pub struct DragModel {
     cd_0: f64,
-    ki: f64,
+    cd_alpha: f64,
+    cd_alpha2: f64
 }
 impl DragModel {
     fn cd(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
-        self.cd_0
+        let alpha = AerodynamicModel::alpha(x);
+        self.cd_0 + self.cd_alpha * alpha + self.cd_alpha2 * alpha.powi(2)
     }
 }
 
