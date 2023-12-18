@@ -76,8 +76,6 @@ impl Component for Plane {
             self.update(dt as f64);
         }
 
-        dbg!(AerodynamicModel::alpha(&self.x));
-
         match self.x.iter().any(|val| val.is_nan()) {
             true => {panic!("wtf nan")},
             false => ()
@@ -113,8 +111,8 @@ pub fn main() {
 
     let aero = AerodynamicModel::new(
         LiftModel::new(5.0, -0.035, 0.314, 0.1),
-        MomentModel::new(-0.1, -0.5, -0.1, -0.7),
-        DragModel::new(0.03, 0.005, 0.005),
+        MomentModel::new(-0.1, -0.5, -0.05, -0.7),
+        DragModel::new(0.03, 0.05, 0.05),
         1.225,
         0.1,
         1.0
@@ -139,7 +137,7 @@ pub fn main() {
                         -0.67,
                         aero,
                         100.0,
-                        4.0,
+                        40.0,
                         1e-1
                         ),
                     thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 500.0, elevator_gain: 1.0 },

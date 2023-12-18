@@ -13,7 +13,10 @@ pub struct LiftModel {
     cl_delta: f64,
 }
 impl LiftModel {
-    fn cl(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
+    pub fn cl(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
+        // self.cl_a * (self.alpha_m-self.alpha_0)/FRAC_PI_2 * 
+        // (FRAC_PI_2 * (AerodynamicModel::alpha(x)-self.alpha_0).sin() / 
+        //     (self.alpha_m - self.alpha_0)) + self.cl_delta * u[1]
         self.cl_a * (AerodynamicModel::alpha(x) - self.alpha_0) + self.cl_delta * u[1]
     }
 }
@@ -47,12 +50,12 @@ impl DragModel {
 
 #[derive(derive_new::new, Clone, Copy)]
 pub struct AerodynamicModel {
-    lift: LiftModel,
-    moment: MomentModel,
-    drag: DragModel,
-    rho: f64,
-    sref: f64,
-    cref: f64
+    pub lift: LiftModel,
+    pub moment: MomentModel,
+    pub drag: DragModel,
+    pub rho: f64,
+    pub sref: f64,
+    pub cref: f64
 }
 impl AerodynamicModel {
     pub fn alpha(x: &DVector<f64>) -> f64 {
@@ -75,7 +78,7 @@ pub struct PlaneDynamicalModel {
     tail_le_to_main_le: f64,
     elevator_x_c: f64,
     x_cg_c: f64,
-    aero_model: AerodynamicModel,
+    pub aero_model: AerodynamicModel,
     gravity: f64,
     mass: f64,
     inertia: f64
