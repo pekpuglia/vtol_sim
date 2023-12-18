@@ -142,7 +142,7 @@ pub fn main() {
                         40.0,
                         1e-1
                         ),
-                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 500.0, elevator_gain: 1.0 },
+                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
                     ref_frame: ReferenceFrame::new_from_screen_frame(
                         &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
                     u: dvector![0.0, 0.0],
