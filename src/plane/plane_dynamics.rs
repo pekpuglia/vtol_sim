@@ -1,7 +1,7 @@
-use std::f64::consts::{PI, FRAC_PI_2};
+use std::{f64::consts::{PI, FRAC_PI_2}, cmp::Ordering};
 
 use control_systems::DynamicalSystem;
-use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, Rotation2};
+use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, Rotation2, ComplexField};
 
 use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::ReferenceFrame};
 
@@ -14,10 +14,15 @@ pub struct LiftModel {
 }
 impl LiftModel {
     pub fn cl(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
-        // self.cl_a * (self.alpha_m-self.alpha_0)/FRAC_PI_2 * 
-        // (FRAC_PI_2 * (AerodynamicModel::alpha(x)-self.alpha_0).sin() / 
-        //     (self.alpha_m - self.alpha_0)) + self.cl_delta * u[1]
-        self.cl_a * (AerodynamicModel::alpha(x) - self.alpha_0) + self.cl_delta * u[1]
+        let alpha_bar = AerodynamicModel::alpha(x)-self.alpha_0;
+
+        (match alpha_bar.abs() <= 2.0*(self.alpha_m - self.alpha_0).abs() {
+            true => self.cl_a * (self.alpha_m-self.alpha_0)/FRAC_PI_2 * 
+                (FRAC_PI_2 * alpha_bar / 
+                (self.alpha_m - self.alpha_0)).sin(),
+            false => 0.0
+        }) + self.cl_delta * u[1]
+        // self.cl_a * (AerodynamicModel::alpha(x) - self.alpha_0) + self.cl_delta * u[1]
     }
 }
 

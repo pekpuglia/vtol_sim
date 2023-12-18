@@ -76,6 +76,8 @@ impl Component for Plane {
             self.update(dt as f64);
         }
 
+        dbg!(AerodynamicModel::alpha(&self.x), self.model.aero_model.lift.cl(&self.x, &self.u));
+
         match self.x.iter().any(|val| val.is_nan()) {
             true => {panic!("wtf nan")},
             false => ()
@@ -145,8 +147,8 @@ pub fn main() {
                         &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
                     u: dvector![0.0, 0.0],
                     x: dvector![
-                        0.0, 0.0, PI / 6.0, 
-                        0.0, 0.0, 0.0]
+                        0.0, 0.0, 0.0, 
+                        200.0, 0.0, 0.0]
                 }, 
                 background: Background::new(
                     Vector2::new(0.0,0.0), 

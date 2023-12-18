@@ -14,6 +14,8 @@ mod plane;
 
 //obs: player controller != (feedback) controller
 
+//closing a control loop: better to use actuator that acts directly on measured quantity
+
 //todo
 //add config file
 //add ui with control options
