@@ -33,7 +33,7 @@ pub struct MomentModel {
     cm_delta: f64,
     cm_q: f64,
     x_np_c: f64,
-}
+} //add stall
 impl MomentModel {
     fn cm(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
         self.cm_0 + self.cm_delta * u[1] + self.cm_q * x[5]
@@ -45,7 +45,7 @@ pub struct DragModel {
     cd_0: f64,
     cd_alpha: f64,
     cd_alpha2: f64
-}
+} //add stall
 impl DragModel {
     fn cd(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
         let alpha = AerodynamicModel::alpha(x);
@@ -164,7 +164,7 @@ impl PlaneDynamicalModel {
                 frame, 
                 GeometryTypes::new_arrow(
                     main_leading_edge, 
-                    main_leading_edge + vector![u[0], 0.0], 
+                    main_leading_edge + vector![u[0]/10.0, 0.0], 
                     2.0)
             )
         ]
