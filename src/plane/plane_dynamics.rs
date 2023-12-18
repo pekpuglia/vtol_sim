@@ -1,9 +1,9 @@
 use std::f64::consts::{PI, FRAC_PI_2};
 
 use control_systems::DynamicalSystem;
-use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, ComplexField, Rotation2};
+use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, Rotation2};
 
-use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::{SCREEN_FRAME, ReferenceFrame}};
+use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::ReferenceFrame};
 
 #[derive(derive_new::new, Clone, Copy)]
 pub struct LiftModel {
@@ -14,7 +14,7 @@ pub struct LiftModel {
 }
 impl LiftModel {
     fn cl(&self, x: &DVector<f64>, u: &DVector<f64>) -> f64 {
-        self.cl_a * (AerodynamicModel::alpha(x) - self.alpha_0)
+        self.cl_a * (AerodynamicModel::alpha(x) - self.alpha_0) + self.cl_delta * u[1]
     }
 }
 
