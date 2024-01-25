@@ -52,7 +52,7 @@ struct PlainBicopter {
     input_receiver: BicopterForceMomentInputReceiver
 }
 
-impl ode_solvers::System<ode_solvers::DVector<f64>> for PlainBicopter {
+impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for PlainBicopter {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
         dy.copy_from_slice(self.plant.xdot(
             x, 

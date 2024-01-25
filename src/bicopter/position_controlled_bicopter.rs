@@ -105,8 +105,8 @@ struct PositionControlledBicopter {
     position_receiver: BicopterPositionInputReceiver
 }
 
-// //abstrair p vehicle
-impl ode_solvers::System<ode_solvers::DVector<f64>> for PositionControlledBicopter {
+//abstrair p vehicle
+impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for PositionControlledBicopter {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
         dy.copy_from_slice(self.system.xdot(
             x, 
@@ -115,7 +115,7 @@ impl ode_solvers::System<ode_solvers::DVector<f64>> for PositionControlledBicopt
     }
 }
 
-// //esse também
+//esse também
 impl PositionControlledBicopter {
     fn update(&mut self, dt: f64) {
         let mut stepper = Rk4::new(

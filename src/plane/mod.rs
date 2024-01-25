@@ -62,7 +62,7 @@ impl Plane {
     }
 }
 
-impl ode_solvers::System<ode_solvers::DVector<f64>> for Plane {
+impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for Plane {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
         dy.copy_from_slice(
             self.model.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice()

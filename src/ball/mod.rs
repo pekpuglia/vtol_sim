@@ -32,7 +32,7 @@ struct Ball {
     wall_point_and_normals: enum_map::EnumMap<Walls, (Vector2<f64>, Vector2<f64>)>,
 }
 
-impl System<Vector4<f64>> for Ball {
+impl System<f64, Vector4<f64>> for Ball {
     fn system(&self, _x: f64, y: &Vector4<f64>, dy: &mut Vector4<f64>) {
         dy.x = y.z;
         dy.y = y.w;

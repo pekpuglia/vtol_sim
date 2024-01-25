@@ -107,7 +107,7 @@ pub struct AngleFeedbackBicopter {
     input_receiver: BicopterForceAngleInputReceiver
 }
 
-impl ode_solvers::System<ode_solvers::DVector<f64>> for AngleFeedbackBicopter {
+impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for AngleFeedbackBicopter {
     fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
         dy.copy_from_slice(self.plant.xdot(
             x, 
