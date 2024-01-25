@@ -3,13 +3,18 @@ mod reference_frame;
 mod geometry;
 mod background;
 
-mod ball;
 
 mod controllers;
 
+mod ball;
+
 mod bicopter;
 
+mod plane;
+
 //obs: player controller != (feedback) controller
+
+//closing a control loop: better to use actuator that acts directly on measured quantity
 
 //todo
 //add config file
@@ -18,9 +23,11 @@ mod bicopter;
 //zoom?
 //make reference frames safer
 //eliminate dvector? enum map?
+//abstract world, vehicle - change "components field"
 //add plane
 //add vtol
 //add rocket
+//use real units?
 fn main() {
-    bicopter::position_controlled_bicopter::main()
+    plane::main()
 }
