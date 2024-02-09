@@ -1,4 +1,8 @@
-use crate::{reference_frame::ReferenceFrame, controllers::PD};
+use crate::{
+    reference_frame::ReferenceFrame, 
+    vehicles::{
+        controllers::PD,
+        Vehicle}};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series, Parallel};
@@ -80,7 +84,7 @@ impl DynamicalSystem for AngleFeedbackAdapter {
 
 use control_systems::UnitySystem;
 
-pub type AngleController = Series<Parallel<UnitySystem<1>, crate::controllers::PD>, HAL>;
+pub type AngleController = Series<Parallel<UnitySystem<1>, crate::vehicles::controllers::PD>, HAL>;
 
 pub type AngleDirectPath = Series<AngleController, BicopterDynamicalModel>;
 

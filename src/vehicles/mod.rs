@@ -1,22 +1,20 @@
-use egaku2d::glutin::event::{Event, WindowEvent, VirtualKeyCode, KeyboardInput};
-use nalgebra::{dvector, Vector2, DVector};
-use ode_solvers::Rk4;
-use crate::reference_frame::ReferenceFrame;
-use crate::{background::Background, graphical_utils::*};
+mod controllers;
 
-const WID: f32 = 600.0;
+use crate::{
+    reference_frame::ReferenceFrame,
+    background::Background,
+    graphical_utils::Component};
 
-const HEI: f32 = 480.0;
+use egaku2d::{
+    glutin::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode}, SimpleCanvas};
 
-mod bicopter_dynamics;
-use bicopter_dynamics::{BicopterDynamicalModel, DynamicalSystem};
+pub mod bicopter;
+
+pub mod plane;
+
+use nalgebra::{DVector, Vector2};
 
 
-pub mod plain_bicopter;
-
-pub mod angle_controlled_bicopter;
-
-pub mod position_controlled_bicopter;
 
 pub trait Vehicle {
     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame);
@@ -27,6 +25,10 @@ pub enum CameraOptions {
     VehicleCentered,
     Fixed
 }
+
+const WID: f32 = 600.0;
+
+const HEI: f32 = 480.0;
 
 pub struct World<VehicleType> {
     pub bicopter: VehicleType,
@@ -70,30 +72,4 @@ impl<VehicleType: Component + Vehicle> Component for World<VehicleType> {
         self.background.receive_event(ev);
         self.bicopter.receive_event(ev);
     }
-}
-
-fn bicopter_main(bicopter: impl Component + Vehicle + 'static) {
-    let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
-
-    let mut drawer = Drawer::new(
-        60, 
-        WID as usize, 
-        HEI as usize, 
-        "test", 
-        &ev_loop,
-        vec![
-            Box::new(World { 
-                bicopter: bicopter, 
-                background: Background::new(
-                    Vector2::new(0.0,0.0), 
-                    100.0, 
-                    [1.0,0.0,0.0,0.3], 
-                    [0.0,1.0,0.0,0.3], 
-                    WID.into(), 
-                    HEI.into()), 
-                camera_option: CameraOptions::Fixed, 
-                camera_option_toggle: false })
-        ]);
-
-    ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
 }

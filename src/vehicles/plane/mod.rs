@@ -1,13 +1,11 @@
 mod plane_dynamics;
 
-use std::{f64::consts::PI, alloc::System};
-
 use control_systems::DynamicalSystem;
 use egaku2d::glutin::event::{Event, WindowEvent};
-use nalgebra::{DVector, vector, dvector, Vector2};
+use nalgebra::{DVector, dvector, Vector2};
 use ode_solvers::Rk4;
 
-use crate::{bicopter::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{SCREEN_FRAME, ReferenceFrame}, background::Background};
+use crate::{vehicles::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{ReferenceFrame}, background::Background};
 
 use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 

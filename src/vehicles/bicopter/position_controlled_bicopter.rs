@@ -6,7 +6,7 @@ use control_systems::UnitySystem;
 use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};
 use nalgebra::Vector2;
 
-use crate::controllers::{PID, PD};
+use crate::vehicles::{controllers::{PID, PD}, Vehicle};
 
 use super::*;
 use super::angle_controlled_bicopter::*;

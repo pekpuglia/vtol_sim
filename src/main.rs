@@ -3,14 +3,9 @@ mod reference_frame;
 mod geometry;
 mod background;
 
-
-mod controllers;
-
 mod ball;
 
-mod bicopter;
-
-mod plane;
+mod vehicles;
 
 //obs: player controller != (feedback) controller
 
@@ -23,10 +18,11 @@ mod plane;
 //zoom?
 //make reference frames safer
 //eliminate dvector? enum map?
-//abstract world, vehicle - change "components field"
+//change "components field"
+//don't use global WID, HEI!
 //add vtol
 //add rocket
 //use real units?
 fn main() {
-    plane::main()
+    vehicles::bicopter::plain_bicopter::main()
 }

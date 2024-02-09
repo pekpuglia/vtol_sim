@@ -1,3 +1,4 @@
+use crate::vehicles::Vehicle;
 use super::*;
 
 #[derive(Clone)]
