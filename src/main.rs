@@ -20,6 +20,7 @@ mod vehicles;
 //eliminate dvector? enum map?
 //change "components field"
 //don't use global WID, HEI!
+//manage dependency spreading
 //add vtol
 //add rocket
 //use real units?
