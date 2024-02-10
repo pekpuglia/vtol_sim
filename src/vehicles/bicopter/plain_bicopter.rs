@@ -1,4 +1,4 @@
-use crate::vehicles::Vehicle;
+use crate::vehicles::{vehicle_main, Vehicle};
 use super::*;
 
 #[derive(Clone)]
@@ -133,7 +133,7 @@ pub fn main() {
         &-Vector2::y(), 
         &Vector2::new(0.0,0.0));
 
-    bicopter_main(
+    vehicle_main(
         PlainBicopter::new(
             BicopterDynamicalModel::new(
                 1000.0, 
@@ -142,5 +142,5 @@ pub fn main() {
             40.0), 
                 ref_frame, 
             BicopterForceMomentInputReceiver::new(200.0, -25.0 )
-    ));
+    ), WID, HEI);
 }

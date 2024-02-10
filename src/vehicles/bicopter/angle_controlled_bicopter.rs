@@ -1,8 +1,7 @@
 use crate::{
     reference_frame::ReferenceFrame, 
     vehicles::{
-        controllers::PD,
-        Vehicle}};
+        controllers::PD, vehicle_main, Vehicle}};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series, Parallel};
@@ -177,8 +176,6 @@ impl Vehicle for AngleFeedbackBicopter {
     }
 }
 
-use super::bicopter_main;
-
 #[allow(unused)]
 pub fn main() {
 
@@ -217,7 +214,5 @@ pub fn main() {
             angle_gain: -std::f64::consts::FRAC_PI_2}
     );
 
-    bicopter_main(
-        angle_feedback_bicopter
-    )
+    vehicle_main(angle_feedback_bicopter, WID, HEI)
 }

@@ -9,9 +9,11 @@ use crate::{vehicles::{World, Vehicle, CameraOptions}, graphical_utils::{Compone
 
 use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 
-const WID: f32 = 600.0;
+use super::vehicle_main;
 
-const HEI: f32 = 480.0;
+const WID: f64 = 600.0;
+
+const HEI: f64 = 480.0;
 
 //todo
 //abstract input receivers!!
@@ -106,8 +108,8 @@ impl Vehicle for Plane {
     }
 }
 
+#[allow(unused)]
 pub fn main() {
-    let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
     let aero = AerodynamicModel::new(
         LiftModel::new(5.0, -0.035, 0.314, 0.1),
@@ -118,45 +120,26 @@ pub fn main() {
         1.0
     );
 
-    let mut drawer = Drawer::new(
-        60, 
-        WID as usize, 
-        HEI as usize, 
-        "test", 
-        &ev_loop,
-        World { 
-            vehicle: Plane {
-                model: PlaneDynamicalModel::new(
-                    40.0, 
-                    5.0, 
-                    20.0, 
-                    3.0, 
-                    80.0,
-                    0.25,
-                    -0.67,
-                    aero,
-                    100.0,
-                    40.0,
-                    1e-1
-                    ),
-                thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
-                ref_frame: ReferenceFrame::new_from_screen_frame(
-                    &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
-                u: dvector![0.0, 0.0],
-                x: dvector![
-                    0.0, 0.0, 0.0, 
-                    200.0, 0.0, 0.0]
-            }, 
-            background: Background::new(
-                Vector2::new(0.0,0.0), 
-                100.0, 
-                [1.0,0.0,0.0,0.3], 
-                [0.0,1.0,0.0,0.3], 
-                WID.into(), 
-                HEI.into()), 
-            camera_option: CameraOptions::Fixed, 
-            camera_option_toggle: false }
-        );
-
-        ev_loop.run(move |event,_ , control_flow| main_loop(event, control_flow, &mut drawer))
+    vehicle_main(Plane {
+        model: PlaneDynamicalModel::new(
+            40.0, 
+            5.0, 
+            20.0, 
+            3.0, 
+            80.0,
+            0.25,
+            -0.67,
+            aero,
+            100.0,
+            40.0,
+            1e-1
+            ),
+        thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
+        ref_frame: ReferenceFrame::new_from_screen_frame(
+            &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
+        u: dvector![0.0, 0.0],
+        x: dvector![
+            0.0, 0.0, 0.0, 
+            200.0, 0.0, 0.0]
+    }, WID, HEI);
 }

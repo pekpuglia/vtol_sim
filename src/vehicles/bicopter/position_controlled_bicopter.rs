@@ -1,6 +1,7 @@
 use std::ops::Add;
 
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
+use crate::vehicles::vehicle_main;
 
 use control_systems::UnitySystem;
 use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};
@@ -203,8 +204,6 @@ impl Vehicle for PositionControlledBicopter {
     }
 }
 
-use super::bicopter_main;
-
 pub fn main() {
 
     let ref_frame = ReferenceFrame::new_from_screen_frame(
@@ -245,11 +244,11 @@ pub fn main() {
             [WID as f64/2.0, -HEI as f64/2.0, 0.0, 0.0, 0.0, 0.0].into_sv::<AngleControlledFeedback>()
         ).feedback([].into_sv::<PositionFeedbackAdapter>());
 
-    bicopter_main(PositionControlledBicopter{
+    vehicle_main(PositionControlledBicopter{
         system: position_feedback_loop,
         position_receiver: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
         ref_frame,
         u: dvector![0.0,0.0,0.0,0.0],
         x: initial_state_vector.data
-    })
+    }, WID, HEI)
 }
