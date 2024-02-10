@@ -8,9 +8,6 @@ use ode_solvers::{System, Dopri5};
 
 use crate::geometry::*;
 
-const WID: f64 = 600.0;
-const HEI: f64 = 480.0;
-
 #[derive(enum_map::Enum, Debug, Clone, Copy)]
 enum Walls {
     Top,
@@ -23,6 +20,7 @@ enum Walls {
 struct Ball {
     pos: Vector2<f64>,
     vel: Vector2<f64>,
+    box_dims: Vector2<f64>,
     damp: f64,
     r: f64,
     is_held: bool,
@@ -52,15 +50,17 @@ impl System<f64, Vector4<f64>> for Ball {
 }
 
 impl Ball {
-    fn new(pos: [f64;2], r: f64, damp: f64) -> Ball {
-        Ball {pos: pos.into(), vel: [0.0,0.0].into(), 
+    fn new(pos: [f64;2], box_dims: [f64;2], r: f64, damp: f64) -> Ball {
+        Ball {pos: pos.into(), 
+            vel: [0.0,0.0].into(), 
+            box_dims: box_dims.into(),
             r, is_held: false, 
             current_mouse_pos: [0.0,0.0].into(), 
             last_mouse_pos: [0.0, 0.0].into(), damp,
             wall_point_and_normals: enum_map::enum_map! {
-                Walls::Bottom => ([0.0, HEI -r].into(), [0.0, -1.0].into()),
+                Walls::Bottom => ([0.0, box_dims[1] -r].into(), [0.0, -1.0].into()),
                 Walls::Left => ([r, 0.0].into(), [1.0, 0.0].into()),
-                Walls::Right => ([WID - r, 0.0].into(), [-1.0, 0.0].into()),
+                Walls::Right => ([box_dims[0] - r, 0.0].into(), [-1.0, 0.0].into()),
                 Walls::Top => ([0.0, r].into(), [0.0, 1.0].into()), },
         }
     }
@@ -70,7 +70,7 @@ impl Ball {
             true => {
                 self.pos = self.current_mouse_pos
                     .zip_map(&Vector2::new(self.r, self.r), |v1, v2| v1.max(v2))
-                    .zip_map(&Vector2::new(WID-self.r, HEI-self.r), |v1, v2| v1.min(v2));
+                    .zip_map(&Vector2::new(self.box_dims.x-self.r, self.box_dims.y-self.r), |v1, v2| v1.min(v2));
                 self.vel = (self.current_mouse_pos - self.last_mouse_pos) / dt;
             },
             false => {
@@ -90,7 +90,7 @@ impl Ball {
                     let new_state_vec = integrator.y_out().last().expect("should have integrated at least 1 step").to_owned();
                     self.pos = Vector2::new(new_state_vec.x, new_state_vec.y)
                         .zip_map(&Vector2::new(self.r, self.r), |v1, v2| v1.max(v2))
-                        .zip_map(&Vector2::new(WID-self.r, HEI-self.r), |v1, v2| v1.min(v2));
+                        .zip_map(&Vector2::new(self.box_dims.x-self.r, self.box_dims.y-self.r), |v1, v2| v1.min(v2));
                     self.vel = Vector2::new(new_state_vec.z, new_state_vec.w);
                     
                     let free_movement_time = integrator.x_out().last().expect("should have integrated at least 1 step").to_owned();
@@ -156,13 +156,16 @@ impl Component for Ball {
 pub fn ball_main() {
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
     
+    let WID = 600.0;
+    let HEI = 480.0;
+
     let mut drawer = Drawer::new(
         30, 
         WID as usize, 
         HEI as usize, 
         "test", 
         &ev_loop,
-        Ball::new([WID/2.0, HEI/2.0], 30.0, 0.1)
+        Ball::new([WID/2.0, HEI/2.0], [WID, HEI], 30.0, 0.1)
         );
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));

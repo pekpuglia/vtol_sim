@@ -24,8 +24,8 @@ mod vehicles;
 //manage dependency spreading
 //add vtol
 //add rocket
-//use real units?
+//use real units
 //cli to choose sim mode
 fn main() {
-    plane::main()
+    ball::ball_main()
 }
