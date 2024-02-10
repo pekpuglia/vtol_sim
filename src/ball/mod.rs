@@ -162,9 +162,8 @@ pub fn ball_main() {
         HEI as usize, 
         "test", 
         &ev_loop,
-        vec![
-            Box::new(Ball::new([WID/2.0, HEI/2.0], 30.0, 0.1))
-        ]);
+        Ball::new([WID/2.0, HEI/2.0], 30.0, 0.1)
+        );
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
 }

@@ -18,20 +18,20 @@ pub trait Component {
     fn receive_event(&mut self, ev: &Event<'_, ()>);
 }
 
-pub struct Drawer {
+pub struct Drawer<CT: Component> {
     system: egaku2d::WindowedSystem,
     timer: egaku2d::RefreshTimer,
-    components: Vec<Box<dyn Component>>,
+    main_component: CT,
     last_draw: Instant,
     paused: bool
 }
 
-impl Drawer {
-    pub fn new(fps: u32, width: usize, height: usize, window_name: &str, event_loop: &EventLoop<()>, components: Vec<Box<dyn Component>>) -> Drawer {
+impl<CT: Component> Drawer<CT> {
+    pub fn new(fps: u32, width: usize, height: usize, window_name: &str, event_loop: &EventLoop<()>, main_component: CT) -> Drawer<CT> {
         Drawer {
             system: egaku2d::WindowedSystem::new([width, height], event_loop, window_name),
             timer: egaku2d::RefreshTimer::new(((1000 as f64) / (fps as f64)) as usize),
-            components,
+            main_component,
             last_draw: Instant::now(),
             paused: true
         }
@@ -44,17 +44,17 @@ impl Drawer {
             self.last_draw = now;
             let canvas = self.system.canvas_mut();
             canvas.clear_color([0.0,0.0,0.0]);
-            self.components.iter_mut().for_each(|c| c.draw(canvas, dt, self.paused));
+            self.main_component.draw(canvas, dt, self.paused);
             self.system.swap_buffers()
         }
     }
     fn broadcast_events(&mut self, ev: &Event<'_,()>) {
-        self.components.iter_mut().for_each(|c| c.receive_event(ev));
+        self.main_component.receive_event(ev)
     }
 }
 
 //enviar eventos pros componentes
-pub fn main_loop(ev: Event<'_, ()>, control_flow: &mut ControlFlow, drawer: &mut Drawer) {
+pub fn main_loop(ev: Event<'_, ()>, control_flow: &mut ControlFlow, drawer: &mut Drawer<impl Component>) {
     drawer.broadcast_events(&ev);
     match ev {
         Event::WindowEvent { event: wev, .. } => {

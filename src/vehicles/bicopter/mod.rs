@@ -30,19 +30,18 @@ fn bicopter_main(bicopter: impl Component + Vehicle + 'static) {
         HEI as usize, 
         "test", 
         &ev_loop,
-        vec![
-            Box::new(World { 
-                bicopter: bicopter, 
-                background: Background::new(
-                    Vector2::new(0.0,0.0), 
-                    100.0, 
-                    [1.0,0.0,0.0,0.3], 
-                    [0.0,1.0,0.0,0.3], 
-                    WID.into(), 
-                    HEI.into()), 
-                camera_option: CameraOptions::Fixed, 
-                camera_option_toggle: false })
-        ]);
+        World { 
+            vehicle: bicopter, 
+            background: Background::new(
+                Vector2::new(0.0,0.0), 
+                100.0, 
+                [1.0,0.0,0.0,0.3], 
+                [0.0,1.0,0.0,0.3], 
+                WID.into(), 
+                HEI.into()), 
+            camera_option: CameraOptions::Fixed, 
+            camera_option_toggle: false }
+        );
 
     ev_loop.run(move |event, _, control_flow| main_loop(event, control_flow, &mut drawer));
 }

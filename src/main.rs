@@ -1,3 +1,5 @@
+use vehicles::plane;
+
 mod graphical_utils;
 mod reference_frame;
 mod geometry;
@@ -18,12 +20,12 @@ mod vehicles;
 //zoom?
 //make reference frames safer
 //eliminate dvector? enum map?
-//change "components field"
 //don't use global WID, HEI!
 //manage dependency spreading
 //add vtol
 //add rocket
 //use real units?
+//cli to choose sim mode
 fn main() {
-    vehicles::bicopter::plain_bicopter::main()
+    plane::main()
 }

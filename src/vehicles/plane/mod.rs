@@ -124,40 +124,39 @@ pub fn main() {
         HEI as usize, 
         "test", 
         &ev_loop,
-        vec![
-            Box::new(World { 
-                bicopter: Plane {
-                    model: PlaneDynamicalModel::new(
-                        40.0, 
-                        5.0, 
-                        20.0, 
-                        3.0, 
-                        80.0,
-                        0.25,
-                        -0.67,
-                        aero,
-                        100.0,
-                        40.0,
-                        1e-1
-                        ),
-                    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
-                    ref_frame: ReferenceFrame::new_from_screen_frame(
-                        &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
-                    u: dvector![0.0, 0.0],
-                    x: dvector![
-                        0.0, 0.0, 0.0, 
-                        200.0, 0.0, 0.0]
-                }, 
-                background: Background::new(
-                    Vector2::new(0.0,0.0), 
-                    100.0, 
-                    [1.0,0.0,0.0,0.3], 
-                    [0.0,1.0,0.0,0.3], 
-                    WID.into(), 
-                    HEI.into()), 
-                camera_option: CameraOptions::Fixed, 
-                camera_option_toggle: false })
-        ]);
+        World { 
+            vehicle: Plane {
+                model: PlaneDynamicalModel::new(
+                    40.0, 
+                    5.0, 
+                    20.0, 
+                    3.0, 
+                    80.0,
+                    0.25,
+                    -0.67,
+                    aero,
+                    100.0,
+                    40.0,
+                    1e-1
+                    ),
+                thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
+                ref_frame: ReferenceFrame::new_from_screen_frame(
+                    &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
+                u: dvector![0.0, 0.0],
+                x: dvector![
+                    0.0, 0.0, 0.0, 
+                    200.0, 0.0, 0.0]
+            }, 
+            background: Background::new(
+                Vector2::new(0.0,0.0), 
+                100.0, 
+                [1.0,0.0,0.0,0.3], 
+                [0.0,1.0,0.0,0.3], 
+                WID.into(), 
+                HEI.into()), 
+            camera_option: CameraOptions::Fixed, 
+            camera_option_toggle: false }
+        );
 
         ev_loop.run(move |event,_ , control_flow| main_loop(event, control_flow, &mut drawer))
 }
