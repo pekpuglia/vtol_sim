@@ -1,7 +1,7 @@
 use std::ops::Add;
 
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
-use crate::vehicles::vehicle_main;
+use crate::vehicles::{vehicle_main, PhysicalModel};
 
 use control_systems::UnitySystem;
 use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};

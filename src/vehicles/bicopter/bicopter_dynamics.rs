@@ -1,7 +1,9 @@
 use nalgebra::{Vector2, dvector, Matrix2};
 use crate::reference_frame::ReferenceFrame;
 use crate::geometry::{Geometry, GeometryTypes};
+use crate::vehicles::PhysicalModel;
 pub use control_systems::DynamicalSystem;
+
 
 #[derive(Clone, Copy)]
 pub struct BicopterDynamicalModel {
@@ -18,8 +20,10 @@ impl BicopterDynamicalModel {
         prop_dist: f64) -> BicopterDynamicalModel {
         BicopterDynamicalModel { inertia, mass, gravity, prop_dist }
     }
+}
 
-    pub fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
+impl PhysicalModel for BicopterDynamicalModel {
+    fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
         let sign = Matrix2::<f64>::from(ref_frame).determinant().signum();
         ReferenceFrame::new_from_frame(
             &Vector2::new(x[2].cos(), x[2].sin()), 
@@ -28,7 +32,7 @@ impl BicopterDynamicalModel {
             ref_frame)
     }
 
-    pub fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry> {
+    fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry> {
         let frame = BicopterDynamicalModel::body_centered_frame(x, ref_frame);
         let left = Vector2::new(-self.prop_dist/2.0, 0.0);
         let right = Vector2::new(self.prop_dist/2.0, 0.0);

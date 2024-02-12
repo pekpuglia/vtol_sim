@@ -1,7 +1,7 @@
 use crate::{
     reference_frame::ReferenceFrame, 
     vehicles::{
-        controllers::PD, vehicle_main, Vehicle}};
+        controllers::PD, vehicle_main, PhysicalModel, Vehicle}};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series, Parallel};

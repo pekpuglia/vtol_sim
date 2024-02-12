@@ -1,10 +1,9 @@
 mod controllers;
 
 use crate::{
-    background::Background, 
-    graphical_utils::{Component, Drawer, main_loop}, 
-    reference_frame::ReferenceFrame};
+    background::Background, geometry::Geometry, graphical_utils::{main_loop, Component, Drawer}, reference_frame::ReferenceFrame};
 
+use control_systems::DynamicalSystem;
 use egaku2d::{
     glutin::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode}, SimpleCanvas};
 
@@ -14,6 +13,17 @@ pub mod plane;
 
 use nalgebra::{DVector, Vector2};
 
+pub trait PhysicalModel: DynamicalSystem {
+    //make body_centered_frame better
+    //doesn't need type?
+    //doesn't need ref_frame (always screen_frame?)
+    fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame;
+    //receive bodyframe as input?
+    fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry>;
+}
+
+//vehicle = DynamicalSystem + InputReceiver + estado!
+//move update here
 pub trait Vehicle: Component {
     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame);
     fn x(&self) -> &DVector<f64>;

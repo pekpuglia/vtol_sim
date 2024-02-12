@@ -1,4 +1,4 @@
-use crate::vehicles::{vehicle_main, Vehicle};
+use crate::vehicles::{vehicle_main, PhysicalModel, Vehicle};
 use super::*;
 
 

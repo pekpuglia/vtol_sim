@@ -3,7 +3,7 @@ use std::{f64::consts::{PI, FRAC_PI_2}, cmp::Ordering};
 use control_systems::DynamicalSystem;
 use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, Rotation2, ComplexField};
 
-use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::ReferenceFrame};
+use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::ReferenceFrame, vehicles::PhysicalModel};
 
 #[derive(derive_new::new, Clone, Copy)]
 pub struct LiftModel {
@@ -90,9 +90,9 @@ pub struct PlaneDynamicalModel {
 }
 
 
-impl PlaneDynamicalModel {
+impl PhysicalModel for PlaneDynamicalModel {
 
-    pub fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
+    fn body_centered_frame(x: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> ReferenceFrame {
         let sign = Matrix2::<f64>::from(ref_frame).determinant().signum();
         ReferenceFrame::new_from_frame(
             &Vector2::new(x[2].cos(), x[2].sin()), 
@@ -103,7 +103,7 @@ impl PlaneDynamicalModel {
 
 
     //x: xcg ycg theta ...
-    pub fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry> {
+     fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry> {
         let frame = PlaneDynamicalModel::body_centered_frame(x, ref_frame);
 
         let main_leading_edge = Vector2::new(

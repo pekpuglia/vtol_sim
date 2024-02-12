@@ -5,7 +5,7 @@ use egaku2d::glutin::event::{Event, WindowEvent};
 use nalgebra::{DVector, dvector, Vector2};
 use ode_solvers::Rk4;
 
-use crate::{vehicles::{World, Vehicle, CameraOptions}, graphical_utils::{Component, Drawer, main_loop}, reference_frame::{ReferenceFrame}, background::Background};
+use crate::{background::Background, graphical_utils::{main_loop, Component, Drawer}, reference_frame::ReferenceFrame, vehicles::{CameraOptions, PhysicalModel, Vehicle, World}};
 
 use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 
