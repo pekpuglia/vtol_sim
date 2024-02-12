@@ -204,6 +204,9 @@ impl Vehicle for PositionControlledBicopter {
     }
 }
 
+const WID: f64 = 600.0;
+const HEI: f64 = 480.0;
+
 pub fn main() {
 
     let ref_frame = ReferenceFrame::new_from_screen_frame(

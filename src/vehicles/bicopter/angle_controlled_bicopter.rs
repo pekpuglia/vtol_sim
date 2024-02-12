@@ -176,6 +176,9 @@ impl Vehicle for AngleFeedbackBicopter {
     }
 }
 
+const WID: f64 = 600.0;
+const HEI: f64 = 480.0;
+
 #[allow(unused)]
 pub fn main() {
 

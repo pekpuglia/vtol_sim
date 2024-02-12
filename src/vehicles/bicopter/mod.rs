@@ -5,11 +5,6 @@ use crate::reference_frame::ReferenceFrame;
 use crate::{background::Background, graphical_utils::*};
 use crate::vehicles::{Vehicle, World, CameraOptions};
 
-
-const WID: f64 = 600.0;
-
-const HEI: f64 = 480.0;
-
 mod bicopter_dynamics;
 use bicopter_dynamics::{BicopterDynamicalModel, DynamicalSystem};
 

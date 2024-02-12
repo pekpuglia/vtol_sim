@@ -20,7 +20,6 @@ mod vehicles;
 //zoom?
 //make reference frames safer
 //eliminate dvector? enum map?
-//don't use global WID, HEI!
 //manage dependency spreading
 //add vtol
 //add rocket

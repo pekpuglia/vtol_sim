@@ -11,10 +11,6 @@ use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, Mom
 
 use super::vehicle_main;
 
-const WID: f64 = 600.0;
-
-const HEI: f64 = 480.0;
-
 //todo
 //abstract input receivers!!
 #[derive(Clone, Copy)]
@@ -107,6 +103,9 @@ impl Vehicle for Plane {
         &self.x
     }
 }
+
+const WID: f64 = 600.0;
+const HEI: f64 = 480.0;
 
 #[allow(unused)]
 pub fn main() {

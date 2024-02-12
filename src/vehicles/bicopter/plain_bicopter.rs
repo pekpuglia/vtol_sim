@@ -1,6 +1,8 @@
 use crate::vehicles::{vehicle_main, Vehicle};
 use super::*;
 
+
+
 #[derive(Clone)]
 struct BicopterForceMomentInputReceiver {
     force_gain: f64,
@@ -124,6 +126,9 @@ impl Vehicle for PlainBicopter {
         &self.x
     }
 }
+
+const WID: f64 = 600.0;
+const HEI: f64 = 480.0;
 
 #[allow(unused)]
 pub fn main() {
