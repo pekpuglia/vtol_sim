@@ -12,6 +12,7 @@ pub mod bicopter;
 pub mod plane;
 
 use nalgebra::{DVector, Vector2};
+use ode_solvers::System;
 
 pub trait PhysicalModel: DynamicalSystem {
     //make body_centered_frame better
@@ -24,7 +25,7 @@ pub trait PhysicalModel: DynamicalSystem {
 
 //vehicle = DynamicalSystem + InputReceiver + estado!
 //move update here
-pub trait Vehicle: Component {
+pub trait Vehicle: Component + System<f64, ode_solvers::DVector<f64>> {
     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame);
     fn x(&self) -> &DVector<f64>;
 }
