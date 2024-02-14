@@ -119,22 +119,6 @@ impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for AngleFeedbackBicopt
     }
 }
 
-impl AngleFeedbackBicopter {
-    fn update(&mut self, dt: f64) {
-        let mut stepper = Rk4::new(
-            self.clone(),
-            0.0,
-            ode_solvers::DVector::from_row_slice(self.x.as_slice()),
-            dt,
-            dt/5.0
-        );
-
-        let _stats = stepper.integrate();
-
-        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
-    }
-}
-
 impl Component for AngleFeedbackBicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
         if !paused {
@@ -173,6 +157,10 @@ impl Vehicle for AngleFeedbackBicopter {
 
     fn x(&self) -> &DVector<f64> {
         &self.x
+    }
+
+    fn x_mut(&mut self) -> &mut DVector<f64> {
+        &mut self.x
     }
 }
 

@@ -64,37 +64,6 @@ impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for PlainBicopter {
     }
 }
 
-impl PlainBicopter {
-    // fn new(plant: BicopterDynamicalModel, input_receiver: BicopterForceMomentInputReceiver) -> PlainBicopter {
-    //     PlainBicopter { 
-    //         plant, 
-    //         x: dvector![
-    //             WID as f64/2.0,
-    //             HEI as f64/2.0,
-    //             0.0,
-    //             0.0,
-    //             0.0,
-    //             0.0
-    //         ], u: dvector![
-    //             0.0,
-    //             0.0
-    //         ], input_receiver }
-    // }
-
-    fn update(&mut self, dt: f64) {
-        let mut stepper = Rk4::new(
-            self.clone(), 
-            0.0, 
-            ode_solvers::DVector::from_row_slice(self.x.as_slice()), 
-            dt, 
-            dt/5.0);
-
-        let _stats = stepper.integrate();
-
-        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
-    }
-}
-
 impl Component for PlainBicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
         if !paused {
@@ -124,6 +93,10 @@ impl Vehicle for PlainBicopter {
 
     fn x(&self) -> &DVector<f64> {
         &self.x
+    }
+
+    fn x_mut(&mut self) -> &mut DVector<f64> {
+        &mut self.x
     }
 }
 
