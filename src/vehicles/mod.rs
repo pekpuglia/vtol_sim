@@ -54,10 +54,6 @@ where
     DS: DynamicalSystem + Clone,
     IR: InputReceiver + Clone
 {
-    fn set_reference_frame(&mut self, new_ref_frame: &crate::reference_frame::ReferenceFrame) {
-        self.ref_frame = new_ref_frame.clone();
-    }
-
     fn x(&self) -> &DVector<f64> {
         &self.x
     }

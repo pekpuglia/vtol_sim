@@ -1,11 +1,9 @@
 mod plane_dynamics;
 
-use control_systems::DynamicalSystem;
 use egaku2d::glutin::event::{Event, WindowEvent};
 use nalgebra::{DVector, dvector, Vector2};
-use ode_solvers::Rk4;
 
-use crate::{background::Background, graphical_utils::{main_loop, Component, Drawer}, reference_frame::ReferenceFrame, vehicles::{CameraOptions, PhysicalModel, Vehicle, World}};
+use crate::{graphical_utils::Component, reference_frame::ReferenceFrame, vehicles::{PhysicalModel, Vehicle}};
 
 use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 

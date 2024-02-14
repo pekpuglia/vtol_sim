@@ -1,6 +1,5 @@
 use crate::{
-    reference_frame::ReferenceFrame, 
-    vehicles::{
+    graphical_utils::Component, reference_frame::ReferenceFrame, vehicles::{
         controllers::PD, screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel, Vehicle}};
 
 use super::*;

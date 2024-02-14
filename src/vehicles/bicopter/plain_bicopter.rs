@@ -1,4 +1,4 @@
-use crate::vehicles::{screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel, Vehicle};
+use crate::{graphical_utils::Component, vehicles::{screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel, Vehicle}};
 use super::*;
 
 

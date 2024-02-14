@@ -1,7 +1,7 @@
-use std::{f64::consts::{PI, FRAC_PI_2}, cmp::Ordering};
+use std::f64::consts::FRAC_PI_2;
 
 use control_systems::DynamicalSystem;
-use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, Rotation2, ComplexField};
+use nalgebra::{Matrix2, Vector2, vector, dvector, DVector, Rotation2};
 
 use crate::{geometry::{Geometry, GeometryTypes}, reference_frame::ReferenceFrame, vehicles::PhysicalModel};
 

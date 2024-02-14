@@ -1,5 +1,6 @@
 use std::ops::Add;
 
+use crate::graphical_utils::Component;
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
 use crate::vehicles::{vehicle_main, GenericVehicle, InputReceiver, PhysicalModel};
 
@@ -14,7 +15,6 @@ use super::angle_controlled_bicopter::*;
 
 #[derive(Clone, Copy)]
 pub struct BicopterPositionInputReceiver {
-    mouse_screen_pos: Vector2<f64>
 }
 
 impl InputReceiver for BicopterPositionInputReceiver {
@@ -218,7 +218,7 @@ pub fn main() {
 
     vehicle_main(PositionControlledBicopter{
         model: position_feedback_loop,
-        input: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
+        input: BicopterPositionInputReceiver {},
         ref_frame,
         u: DVector::zeros(PositionFeedbackLoop::INPUT_SIZE),
         x: initial_state_vector.data
