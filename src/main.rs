@@ -26,5 +26,5 @@ mod vehicles;
 //use real units
 //cli to choose sim mode
 fn main() {
-    plane::main()
+    bicopter::plain_bicopter::main()
 }

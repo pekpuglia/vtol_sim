@@ -76,6 +76,13 @@ where
     }
 }
 
+pub fn screen_center_x(wid: f64, hei: f64, n: usize) -> DVector<f64> {
+    let mut ret = DVector::zeros(n);
+    ret[0] = wid/2.0;
+    ret[1] = -hei/2.0;
+    ret
+}
+
 pub trait Vehicle: Clone + Component + System<f64, ode_solvers::DVector<f64>> {
     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame);
     fn x(&self) -> &DVector<f64>;
