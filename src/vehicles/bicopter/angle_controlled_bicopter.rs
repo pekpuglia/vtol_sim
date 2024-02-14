@@ -1,7 +1,7 @@
 use crate::{
     reference_frame::ReferenceFrame, 
     vehicles::{
-        controllers::PD, vehicle_main, PhysicalModel, Vehicle}};
+        controllers::PD, screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel, Vehicle}};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series, Parallel};
@@ -26,6 +26,12 @@ impl BicopterForceAngleInputReceiver {
         } else {
             None
         }
+    }
+}
+
+impl InputReceiver for BicopterForceAngleInputReceiver {
+    fn u(&self, ev: &Event<'_, ()>) -> Option<DVector<f64>> {
+        self.targets(ev)
     }
 }
 
@@ -89,51 +95,7 @@ pub type AngleDirectPath = Series<AngleController, BicopterDynamicalModel>;
 
 pub type AngleControlledFeedback = NegativeFeedback<AngleDirectPath, AngleFeedbackAdapter>;
 
-#[derive(new, Clone)]
-pub struct AngleFeedbackBicopter {
-    plant: AngleControlledFeedback,
-    #[new(value="dvector![
-        WID as f64/2.0,
-        -HEI as f64/2.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-    ]")]
-    pub x: nalgebra::DVector<f64>,
-    #[new(value="dvector![
-        0.0,
-        0.0
-    ]")]
-    u: nalgebra::DVector<f64>,
-    pub ref_frame: ReferenceFrame,
-    input_receiver: BicopterForceAngleInputReceiver
-}
-
-impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for AngleFeedbackBicopter {
-    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
-        dy.copy_from_slice(self.plant.xdot(
-            x, 
-            nalgebra::DVector::from_row_slice(y.as_slice()), 
-            self.u.clone()).as_slice())
-    }
-}
-
-impl AngleFeedbackBicopter {
-    fn update(&mut self, dt: f64) {
-        let mut stepper = Rk4::new(
-            self.clone(),
-            0.0,
-            ode_solvers::DVector::from_row_slice(self.x.as_slice()),
-            dt,
-            dt/5.0
-        );
-
-        let _stats = stepper.integrate();
-
-        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
-    }
-}
+type AngleFeedbackBicopter = GenericVehicle<AngleControlledFeedback, BicopterForceAngleInputReceiver>;
 
 impl Component for AngleFeedbackBicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
@@ -142,14 +104,14 @@ impl Component for AngleFeedbackBicopter {
 
         }
         //algo errado aqui!!!  hb
-        let output = self.plant.y(0.0, self.x.clone(), self.u.clone());
-        let error = self.u.clone() - self.plant.rev_ref().y(0.0, dvector![], output);
-        let thrusts = self.plant
+        let output = self.model.y(0.0, self.x.clone(), self.u.clone());
+        let error = self.u.clone() - self.model.rev_ref().y(0.0, dvector![], output);
+        let thrusts = self.model
             .dir_ref()
             .ds1_ref()
             .y(0.0, dvector![], error.clone());
 
-        self.plant
+        self.model
             .dir_ref()
             .ds2_ref()
             .body_centered_geometry(&self.x, &thrusts, &self.ref_frame)
@@ -159,7 +121,7 @@ impl Component for AngleFeedbackBicopter {
     }
 
     fn receive_event(&mut self, ev: &Event<'_, ()>) {
-        match self.input_receiver.targets(ev) {
+        match self.input.u(ev) {
             Some(targets) => {self.u = targets},
             None => {},
         }
@@ -173,6 +135,10 @@ impl Vehicle for AngleFeedbackBicopter {
 
     fn x(&self) -> &DVector<f64> {
         &self.x
+    }
+
+    fn x_mut(&mut self) -> &mut DVector<f64> {
+        &mut self.x
     }
 }
 
@@ -209,13 +175,15 @@ pub fn main() {
         AngleFeedbackAdapter{}
     );
 
-    let angle_feedback_bicopter = AngleFeedbackBicopter::new(
-        angle_controlled_feedback, 
-        ref_frame, 
-        BicopterForceAngleInputReceiver { 
+    let angle_feedback_bicopter = AngleFeedbackBicopter {
+        model: angle_controlled_feedback,
+        input: BicopterForceAngleInputReceiver { 
             force_gain: 200.0, 
-            angle_gain: -std::f64::consts::FRAC_PI_2}
-    );
-
+            angle_gain: -std::f64::consts::FRAC_PI_2},
+        x: screen_center_x(WID, HEI, AngleControlledFeedback::STATE_VECTOR_SIZE),
+        u: DVector::zeros(AngleControlledFeedback::INPUT_SIZE),
+        ref_frame
+    };
+    
     vehicle_main(angle_feedback_bicopter, WID, HEI)
 }

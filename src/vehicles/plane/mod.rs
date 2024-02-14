@@ -9,7 +9,7 @@ use crate::{background::Background, graphical_utils::{main_loop, Component, Draw
 
 use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 
-use super::vehicle_main;
+use super::{vehicle_main, GenericVehicle, InputReceiver};
 
 //todo
 //abstract input receivers!!
@@ -19,7 +19,7 @@ struct PlaneThrustAndElevatorInputReceiver {
     elevator_gain: f64
 }
 
-impl PlaneThrustAndElevatorInputReceiver {
+impl InputReceiver for PlaneThrustAndElevatorInputReceiver {
     fn u(&self, ev: &Event<'_, ()>) -> Option<DVector<f64>> {
         if let Event::WindowEvent {event: WindowEvent::CursorMoved { device_id: _, position: p, .. }, window_id: _} = ev {
             
@@ -34,37 +34,7 @@ impl PlaneThrustAndElevatorInputReceiver {
     }
 }
 
-#[derive(Clone)]
-struct Plane {
-    model: plane_dynamics::PlaneDynamicalModel,
-    thrust_elevator_input: PlaneThrustAndElevatorInputReceiver,
-    x: DVector<f64>,
-    u: DVector<f64>,
-    ref_frame: ReferenceFrame
-}
-
-impl Plane {
-    fn update(&mut self, dt: f64) {
-        let mut stepper = Rk4::new(
-            self.clone(), 
-            0.0, 
-            ode_solvers::DVector::from_row_slice(self.x.as_slice()), 
-            dt, 
-            dt/5.0);
-
-        let _stats = stepper.integrate();
-
-        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
-    }
-}
-
-impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for Plane {
-    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
-        dy.copy_from_slice(
-            self.model.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice()
-        )
-    }
-}
+type Plane = GenericVehicle<PlaneDynamicalModel, PlaneThrustAndElevatorInputReceiver>;
 
 impl Component for Plane {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
@@ -87,7 +57,7 @@ impl Component for Plane {
     }
 
     fn receive_event(&mut self, ev: &egaku2d::glutin::event::Event<'_, ()>) {
-        match self.thrust_elevator_input.u(ev) {
+        match self.input.u(ev) {
             Some(u) => {self.u = u;},
             None => (),
         }
@@ -101,6 +71,10 @@ impl Vehicle for Plane {
 
     fn x(&self) -> &DVector<f64> {
         &self.x
+    }
+
+    fn x_mut(&mut self) -> &mut DVector<f64> {
+        &mut self.x
     }
 }
 
@@ -133,7 +107,7 @@ pub fn main() {
             40.0,
             1e-1
             ),
-        thrust_elevator_input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
+        input: PlaneThrustAndElevatorInputReceiver { thrust_gain: 5000.0, elevator_gain: 1.0 },
         ref_frame: ReferenceFrame::new_from_screen_frame(
             &Vector2::x(), &-Vector2::y(), &Vector2::new(WID as f64 / 2.0, HEI as f64 / 2.0)),
         u: dvector![0.0, 0.0],

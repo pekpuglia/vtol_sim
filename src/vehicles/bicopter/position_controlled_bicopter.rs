@@ -1,11 +1,11 @@
 use std::ops::Add;
 
 use crate::reference_frame::{ReferenceFrame, ConvertToFrame, SCREEN_FRAME};
-use crate::vehicles::{vehicle_main, PhysicalModel};
+use crate::vehicles::{vehicle_main, GenericVehicle, InputReceiver, PhysicalModel};
 
 use control_systems::UnitySystem;
 use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};
-use nalgebra::Vector2;
+use nalgebra::{vector, Vector2};
 
 use crate::vehicles::{controllers::{PID, PD}, Vehicle};
 
@@ -17,15 +17,13 @@ pub struct BicopterPositionInputReceiver {
     mouse_screen_pos: Vector2<f64>
 }
 
-impl BicopterPositionInputReceiver {
-    fn update_mouse_position(&mut self, ev: &egaku2d::glutin::event::Event<'_, ()>) {
+impl InputReceiver for BicopterPositionInputReceiver {
+    fn u(&self, ev: &Event<'_, ()>) -> Option<DVector<f64>> {
         if let Event::WindowEvent { event: WindowEvent::CursorMoved { position, .. }, .. } = ev {
-            self.mouse_screen_pos = Vector2::new(position.x, position.y);
+            Some(dvector![position.x, position.y])
+        } else {
+            None
         }
-    }
-
-    fn position_target(&self, world_ref_frame: &ReferenceFrame) -> Vector2<f64> {
-        self.mouse_screen_pos.position_to_frame(&SCREEN_FRAME, world_ref_frame)
     }
 }
 
@@ -97,41 +95,7 @@ impl DynamicalSystem for PositionFeedbackAdapter {
 
 type PositionFeedbackLoop = NegativeFeedback<Series<PositionTrackerToForceAngle, AngleControlledFeedback>, PositionFeedbackAdapter>;
 
-#[derive(Clone)]
-struct PositionControlledBicopter {
-    system: PositionFeedbackLoop,
-    x: nalgebra::DVector<f64>,
-    u: nalgebra::DVector<f64>,
-    pub ref_frame: ReferenceFrame,
-    position_receiver: BicopterPositionInputReceiver
-}
-
-//abstrair p vehicle
-impl ode_solvers::System<f64, ode_solvers::DVector<f64>> for PositionControlledBicopter {
-    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
-        dy.copy_from_slice(self.system.xdot(
-            x, 
-            nalgebra::DVector::from_row_slice(y.as_slice()), 
-            self.u.clone()).as_slice())
-    }
-}
-
-//esse também
-impl PositionControlledBicopter {
-    fn update(&mut self, dt: f64) {
-        let mut stepper = Rk4::new(
-            self.clone(),
-            0.0,
-            ode_solvers::DVector::from_row_slice(self.x.as_slice()),
-            dt,
-            dt/5.0
-        );
-
-        let _stats = stepper.integrate();
-
-        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
-    }
-}
+type PositionControlledBicopter = GenericVehicle<PositionFeedbackLoop, BicopterPositionInputReceiver>;
 
 impl Component for PositionControlledBicopter {
     fn draw(&mut self, canvas: &mut egaku2d::SimpleCanvas, dt: f32, paused: bool) {
@@ -141,16 +105,16 @@ impl Component for PositionControlledBicopter {
 
         let sv = StateVector::<PositionFeedbackLoop>::new(self.x.clone());
 
-        let position_error = self.system.error(0.0, sv.data.clone(), self.u.clone());
+        let position_error = self.model.error(0.0, sv.data.clone(), self.u.clone());
 
-        let force_moment = self.system
+        let force_moment = self.model
             .dir_ref()
             .y1(0.0, 
                 sv.dirx().data, 
                 position_error
         );
 
-        let angle_error = self.system
+        let angle_error = self.model
             .dir_ref()
             .ds2_ref()
             .error(0.0, 
@@ -158,7 +122,7 @@ impl Component for PositionControlledBicopter {
                 force_moment
         );
 
-        let thrusts = self.system
+        let thrusts = self.model
             .dir_ref()
             .ds2_ref()
             .dir_ref()
@@ -167,7 +131,7 @@ impl Component for PositionControlledBicopter {
                 angle_error
         );
 
-        self.system
+        self.model
             .dir_ref()
             .ds2_ref()
             .dir_ref()
@@ -184,13 +148,14 @@ impl Component for PositionControlledBicopter {
     }
 
     fn receive_event(&mut self, ev: &Event<'_, ()>) {
-        self.position_receiver.update_mouse_position(ev);
-        let position_target = self.position_receiver.position_target(&self.ref_frame);
-        self.u = dvector![
-            position_target[0], 0.0,
-            position_target[1], 0.0
-        ]
-
+        let u = self.input.u(ev);
+        if let Some(new_u) = u {
+            let position_target = vector![new_u[0], new_u[1]].position_to_frame(&SCREEN_FRAME, &self.ref_frame);
+            self.u = dvector![
+                position_target[0], 0.0,
+                position_target[1], 0.0
+            ]
+        }
     }
 }
 
@@ -201,6 +166,10 @@ impl Vehicle for PositionControlledBicopter {
 
     fn x(&self) -> &DVector<f64> {
         &self.x
+    }
+
+    fn x_mut(&mut self) -> &mut DVector<f64> {
+        &mut self.x
     }
 }
 
@@ -248,10 +217,10 @@ pub fn main() {
         ).feedback([].into_sv::<PositionFeedbackAdapter>());
 
     vehicle_main(PositionControlledBicopter{
-        system: position_feedback_loop,
-        position_receiver: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
+        model: position_feedback_loop,
+        input: BicopterPositionInputReceiver { mouse_screen_pos: Vector2::zeros() },
         ref_frame,
-        u: dvector![0.0,0.0,0.0,0.0],
+        u: DVector::zeros(PositionFeedbackLoop::INPUT_SIZE),
         x: initial_state_vector.data
     }, WID, HEI)
 }

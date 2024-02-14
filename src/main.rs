@@ -18,7 +18,7 @@ mod vehicles;
 //add ui with control options
 //saturations??
 //zoom?
-//make reference frames safer
+//make reference frames safer, better use them for initial conditions
 //eliminate dvector? enum map?
 //manage dependency spreading
 //add vtol
@@ -26,5 +26,5 @@ mod vehicles;
 //use real units
 //cli to choose sim mode
 fn main() {
-    bicopter::angle_controlled_bicopter::main()
+    bicopter::position_controlled_bicopter::main()
 }
