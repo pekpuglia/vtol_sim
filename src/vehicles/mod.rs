@@ -23,13 +23,64 @@ pub trait PhysicalModel: DynamicalSystem {
     fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &ReferenceFrame) -> Vec<Geometry>;
 }
 
+pub trait InputReceiver {
+    fn u(&self, ev: &Event<'_, ()>) -> Option<DVector<f64>>;
+}
+
 //vehicle = DynamicalSystem + InputReceiver + estado!
-//move update here
+#[derive(Clone)]
+pub struct GenericVehicle<DS: DynamicalSystem, IR: InputReceiver> {
+    model: DS,
+    input: IR,
+    x: DVector<f64>,
+    u: DVector<f64>,
+    ref_frame: ReferenceFrame
+}
+
+impl<DS, IR> ode_solvers::System<f64, ode_solvers::DVector<f64>> for GenericVehicle<DS, IR> 
+where
+    DS: DynamicalSystem,
+    IR: InputReceiver
+{
+    fn system(&self, x: f64, y: &ode_solvers::DVector<f64>, dy: &mut ode_solvers::DVector<f64>) {
+        dy.copy_from_slice(
+            self.model.xdot(x, nalgebra::DVector::from_row_slice(y.as_slice()), self.u.clone()).as_slice()
+        )
+    }
+}
+
+impl<DS, IR> GenericVehicle<DS, IR>
+where
+    DS: DynamicalSystem + Clone,
+    IR: InputReceiver + Clone
+{
+    fn set_reference_frame(&mut self, new_ref_frame: &crate::reference_frame::ReferenceFrame) {
+        self.ref_frame = new_ref_frame.clone();
+    }
+
+    fn x(&self) -> &DVector<f64> {
+        &self.x
+    }
+
+    fn update(&mut self, dt: f64) {
+        let mut stepper = ode_solvers::Rk4::new(
+            self.clone(), 
+            0.0, 
+            ode_solvers::DVector::from_row_slice(self.x().as_slice()), 
+            dt, 
+            dt/5.0);
+
+        let _stats = stepper.integrate();
+
+        self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
+    }
+}
+
 pub trait Vehicle: Clone + Component + System<f64, ode_solvers::DVector<f64>> {
     fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame);
     fn x(&self) -> &DVector<f64>;
     fn x_mut(&mut self) -> &mut DVector<f64>;
-    
+
     fn update(&mut self, dt: f64) {
         let mut stepper = ode_solvers::Rk4::new(
             self.clone(), 
