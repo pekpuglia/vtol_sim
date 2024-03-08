@@ -1,6 +1,6 @@
 use crate::{
     graphical_utils::Component, reference_frame::ReferenceFrame, vehicles::{
-        controllers::PD, screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel, Vehicle}};
+        controllers::PD, screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel}};
 
 use super::*;
 use control_systems::{NegativeFeedback, Series, Parallel};
@@ -124,20 +124,6 @@ impl Component for AngleFeedbackBicopter {
             Some(targets) => {self.u = targets},
             None => {},
         }
-    }
-}
-
-impl Vehicle for AngleFeedbackBicopter {
-    fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
-        self.ref_frame = *new_ref_frame;
-    }
-
-    fn x(&self) -> &DVector<f64> {
-        &self.x
-    }
-
-    fn x_mut(&mut self) -> &mut DVector<f64> {
-        &mut self.x
     }
 }
 

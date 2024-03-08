@@ -3,7 +3,7 @@ mod plane_dynamics;
 use egaku2d::glutin::event::{Event, WindowEvent};
 use nalgebra::{DVector, dvector, Vector2};
 
-use crate::{graphical_utils::Component, reference_frame::ReferenceFrame, vehicles::{PhysicalModel, Vehicle}};
+use crate::{graphical_utils::Component, reference_frame::ReferenceFrame, vehicles::PhysicalModel};
 
 use self::plane_dynamics::{PlaneDynamicalModel, AerodynamicModel, LiftModel, MomentModel, DragModel};
 
@@ -59,20 +59,6 @@ impl Component for Plane {
             Some(u) => {self.u = u;},
             None => (),
         }
-    }
-}
-
-impl Vehicle for Plane {
-    fn set_reference_frame(&mut self, new_ref_frame: &crate::reference_frame::ReferenceFrame) {
-        self.ref_frame = new_ref_frame.clone();
-    }
-
-    fn x(&self) -> &DVector<f64> {
-        &self.x
-    }
-
-    fn x_mut(&mut self) -> &mut DVector<f64> {
-        &mut self.x
     }
 }
 
