@@ -51,7 +51,9 @@ impl DynamicalSystem for RocketModel {
             x[5], //thetadot
             0.0,
             0.0,
-            actual_thrust * (1.0 - xcg) * self.body_length * (u[1].sin()) / (self.dry_inertia + x[6] * (self.propellant_cm -xcg).powi(2)), //thetadotdot
+            // actual_thrust * (x[2] - u[1]).cos() / (x[6] + self.dry_mass),
+            // actual_thrust * (x[2] - u[1]).sin() / (x[6] + self.dry_mass) - self.gravity,
+            actual_thrust * (1.0 - xcg) * self.body_length * (-u[1].sin()) / (self.dry_inertia + x[6] * (self.propellant_cm -xcg).powi(2)), //thetadotdot
             mdot, //mdot
         ]
     }
@@ -98,7 +100,7 @@ impl PhysicalModel for RocketModel {
                 radius: self.body_cross_section as f32 }
         );
 
-        let engine_exit = body_base - self.body_cross_section * Vector2::new(u[1].cos(), -u[1].sin());
+        let engine_exit = body_base - self.body_cross_section * Vector2::new(u[1].cos(), u[1].sin());
 
         //don't print engine, print fuel left
         let engine = Geometry::new(
@@ -116,7 +118,7 @@ impl PhysicalModel for RocketModel {
             frame, 
             GeometryTypes::Arrow { 
                 start: engine_exit, 
-                end: engine_exit - 2.0 * u[0] * Vector2::new(u[1].cos(), -u[1].sin()), 
+                end: engine_exit - 2.0 * u[0] * Vector2::new(u[1].cos(), u[1].sin()), 
                 thickness: (self.body_cross_section/3.0) as f32}
             );
 
