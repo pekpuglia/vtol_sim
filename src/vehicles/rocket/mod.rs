@@ -35,11 +35,13 @@ impl DynamicalSystem for RocketModel {
         
         let xcg = (self.dry_mass * self.dry_cm + (x[6]) * self.propellant_cm) / (x[6] + self.dry_mass);
         
-        let mdot = if x[6] > 0.0 {
-            -u[0] / self.exhaust_velocity
+        let actual_thrust = if x[6] > 0.0 {
+            u[0]
         } else {
             0.0
         };
+
+        let mdot = -actual_thrust / self.exhaust_velocity;
 
         //set thrust to 0
 
@@ -49,7 +51,7 @@ impl DynamicalSystem for RocketModel {
             x[5], //thetadot
             0.0,
             0.0,
-            u[0] * (1.0 - xcg) * self.body_length * (u[1].sin()) / (self.dry_inertia + x[6] * (self.propellant_cm -xcg).powi(2)), //thetadotdot
+            actual_thrust * (1.0 - xcg) * self.body_length * (u[1].sin()) / (self.dry_inertia + x[6] * (self.propellant_cm -xcg).powi(2)), //thetadotdot
             mdot, //mdot
         ]
     }
@@ -98,6 +100,7 @@ impl PhysicalModel for RocketModel {
 
         let engine_exit = body_base - self.body_cross_section * Vector2::new(u[1].cos(), -u[1].sin());
 
+        //don't print engine, print fuel left
         let engine = Geometry::new(
             [0.0, 0.0, 1.0, 1.0].into(), 
             frame, 
@@ -107,6 +110,7 @@ impl PhysicalModel for RocketModel {
                 thickness: (self.body_cross_section/2.0) as f32 }
         );
 
+        //make this depend on actual thrust not input
         let thrust_arrow = Geometry::new(
             [1.0, 0.0, 0.0, 1.0].into(), 
             frame, 
@@ -187,6 +191,14 @@ pub fn main() {
             &-Vector2::y(), 
             &Vector2::new(WID/2.0, HEI/2.0)),
         u: DVector::zeros(RocketModel::INPUT_SIZE),
-        x: DVector::zeros(RocketModel::STATE_VECTOR_SIZE)
+        x: dvector![
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ]
     }, WID, HEI);
 }
