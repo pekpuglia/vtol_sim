@@ -46,13 +46,11 @@ impl DynamicalSystem for RocketModel {
         //set thrust to 0
 
         dvector![
-            0.0,
-            0.0,
+            x[3],
+            x[4],
             x[5], //thetadot
-            0.0,
-            0.0,
-            // actual_thrust * (x[2] - u[1]).cos() / (x[6] + self.dry_mass),
-            // actual_thrust * (x[2] - u[1]).sin() / (x[6] + self.dry_mass) - self.gravity,
+            actual_thrust * (x[2] - u[1]).cos() / (x[6] + self.dry_mass),
+            actual_thrust * (x[2] - u[1]).sin() / (x[6] + self.dry_mass) - self.gravity,
             actual_thrust * (1.0 - xcg) * self.body_length * (-u[1].sin()) / (self.dry_inertia + x[6] * (self.propellant_cm -xcg).powi(2)), //thetadotdot
             mdot, //mdot
         ]
@@ -178,16 +176,16 @@ impl Component for PlainRocket {
 
 pub fn main() {
     vehicle_main(PlainRocket {
-        input: GimbalThrustInputReceiver{thrust_gain: 300.0, gimbal_gain: std::f64::consts::PI / 18.0},
+        input: GimbalThrustInputReceiver{thrust_gain: 3000.0, gimbal_gain: std::f64::consts::PI / 18.0},
         model: RocketModel { 
             dry_mass: 10.0,
-            exhaust_velocity: 1500.0, 
+            exhaust_velocity: 5000.0, 
             body_length: 60.0, 
             body_cross_section: 10.0,
             dry_cm: 0.3,
             dry_inertia: 1000.0,
             propellant_cm: 0.8,
-            gravity: 1.0, },
+            gravity: 100.0, },
         ref_frame: ReferenceFrame::new_from_screen_frame(
             &Vector2::x(), 
             &-Vector2::y(), 
@@ -200,7 +198,7 @@ pub fn main() {
             0.0,
             0.0,
             0.0,
-            1.0
+            10.0
         ]
     }, WID, HEI);
 }
