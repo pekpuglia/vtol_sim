@@ -51,12 +51,15 @@ impl PhysicalModel for RocketModel {
     }
 
     fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &crate::reference_frame::ReferenceFrame) -> Vec<crate::geometry::Geometry> {
+        let body_tip = self.dry_com * self.body_length * Vector2::x();
+        let body_base = -(1.0-self.dry_com) * self.body_length * Vector2::x(); 
+        
         let body = Geometry::new(
             [1.0, 1.0, 1.0, 1.0].into(), 
             *ref_frame, 
             GeometryTypes::Line { 
-                p1: Vector2::new(-(1.0-self.dry_com) * self.body_length, 0.0), 
-                p2: Vector2::new(self.dry_com * self.body_length, 0.0), 
+                p1: body_base, 
+                p2: body_tip, 
                 thickness: (self.body_cross_section/2.0) as f32 }
         );
 
@@ -64,11 +67,20 @@ impl PhysicalModel for RocketModel {
             [1.0, 1.0, 1.0, 1.0].into(), 
             *ref_frame, 
             GeometryTypes::Circle { 
-                center: Vector2::new(self.dry_com * self.body_length, 0.0), 
+                center: body_tip, 
                 radius: self.body_cross_section as f32 }
         );
 
-        vec![body, nose]
+        let engine = Geometry::new(
+            [1.0, 1.0, 1.0, 1.0].into(), 
+            *ref_frame, 
+            GeometryTypes::Line { 
+                p1: body_base - self.body_cross_section / 3.0 * Vector2::new(u[1].cos(), -u[1].sin()), 
+                p2: body_base, 
+                thickness: (self.body_cross_section/6.0) as f32 }
+        );
+
+        vec![body, nose, engine]
     }
 }
 
