@@ -8,7 +8,7 @@ use control_systems::UnitySystem;
 use control_systems::{NegativeFeedback, Series, StateVector, Parallel, IntoSV};
 use nalgebra::{vector, Vector2};
 
-use crate::vehicles::{controllers::{PID, PD}, Vehicle};
+use crate::vehicles::{controllers::{PID, PD}};
 
 use super::*;
 use super::angle_controlled_bicopter::*;
@@ -159,19 +159,6 @@ impl Component for PositionControlledBicopter {
     }
 }
 
-impl Vehicle for PositionControlledBicopter {
-    fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
-        self.ref_frame = *new_ref_frame;
-    }
-
-    fn x(&self) -> &DVector<f64> {
-        &self.x
-    }
-
-    fn x_mut(&mut self) -> &mut DVector<f64> {
-        &mut self.x
-    }
-}
 
 const WID: f64 = 600.0;
 const HEI: f64 = 480.0;

@@ -1,4 +1,4 @@
-use crate::{graphical_utils::Component, vehicles::{screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel, Vehicle}};
+use crate::{graphical_utils::Component, vehicles::{screen_center_x, vehicle_main, GenericVehicle, InputReceiver, PhysicalModel}};
 use super::*;
 
 
@@ -62,20 +62,6 @@ impl Component for PlainBicopter {
             Some(thrusts) => {self.u = thrusts},
             None => {},
         }
-    }
-}
-
-impl Vehicle for PlainBicopter {
-    fn set_reference_frame(&mut self, new_ref_frame: &ReferenceFrame) {
-        self.ref_frame = *new_ref_frame;
-    }
-
-    fn x(&self) -> &DVector<f64> {
-        &self.x
-    }
-
-    fn x_mut(&mut self) -> &mut DVector<f64> {
-        &mut self.x
     }
 }
 
