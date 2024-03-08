@@ -13,11 +13,13 @@ const HEI: f64 = 480.0;
 #[derive(Clone, Copy)]
 struct RocketModel {
     dry_mass: f64,
-    dry_com: f64, //cm from nose in body_lengths
-    initial_propellant_mass: f64,
+    dry_cm: f64, //cm from nose in body_lengths
+    dry_inertia: f64,
+    propellant_cm: f64,
     exhaust_velocity: f64,
     body_length: f64,
     body_cross_section: f64,
+    gravity: f64
 }
 
 impl DynamicalSystem for RocketModel {
@@ -30,7 +32,26 @@ impl DynamicalSystem for RocketModel {
     fn xdot(&self, t: f64, 
         x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        todo!()
+        
+        let xcg = (self.dry_mass * self.dry_cm + (x[6]) * self.propellant_cm) / (x[6] + self.dry_mass);
+        
+        let mdot = if x[6] > 0.0 {
+            -u[0] / self.exhaust_velocity
+        } else {
+            0.0
+        };
+
+        //set thrust to 0
+
+        dvector![
+            0.0,
+            0.0,
+            x[5], //thetadot
+            0.0,
+            0.0,
+            u[0] * (1.0 - xcg) * self.body_length * (u[1].sin()) / (self.dry_inertia + x[6] * (self.propellant_cm -xcg).powi(2)), //thetadotdot
+            mdot, //mdot
+        ]
     }
 
     fn y(&self, t: f64, 
@@ -52,12 +73,15 @@ impl PhysicalModel for RocketModel {
     }
 
     fn body_centered_geometry(&self, x: &nalgebra::DVector<f64>, u: &nalgebra::DVector<f64>, ref_frame: &crate::reference_frame::ReferenceFrame) -> Vec<crate::geometry::Geometry> {
-        let body_tip = self.dry_com * self.body_length * Vector2::x();
-        let body_base = -(1.0-self.dry_com) * self.body_length * Vector2::x(); 
+        //remove the need for this line later!!!!!!!!!!!!
+        let frame = RocketModel::body_centered_frame(x, ref_frame);
+        
+        let body_tip = self.dry_cm * self.body_length * Vector2::x();
+        let body_base = -(1.0-self.dry_cm) * self.body_length * Vector2::x(); 
         
         let body = Geometry::new(
             [1.0, 1.0, 1.0, 1.0].into(), 
-            *ref_frame, 
+            frame, 
             GeometryTypes::Line { 
                 p1: body_base, 
                 p2: body_tip, 
@@ -66,7 +90,7 @@ impl PhysicalModel for RocketModel {
 
         let nose = Geometry::new(
             [1.0, 1.0, 1.0, 1.0].into(), 
-            *ref_frame, 
+            frame, 
             GeometryTypes::Circle { 
                 center: body_tip, 
                 radius: self.body_cross_section as f32 }
@@ -76,7 +100,7 @@ impl PhysicalModel for RocketModel {
 
         let engine = Geometry::new(
             [0.0, 0.0, 1.0, 1.0].into(), 
-            *ref_frame, 
+            frame, 
             GeometryTypes::Line { 
                 p1: engine_exit, 
                 p2: body_base, 
@@ -85,7 +109,7 @@ impl PhysicalModel for RocketModel {
 
         let thrust_arrow = Geometry::new(
             [1.0, 0.0, 0.0, 1.0].into(), 
-            *ref_frame, 
+            frame, 
             GeometryTypes::Arrow { 
                 start: engine_exit, 
                 end: engine_exit - 2.0 * u[0] * Vector2::new(u[1].cos(), -u[1].sin()), 
@@ -126,6 +150,8 @@ impl Component for PlainRocket {
             self.update(dt as f64);
         }
 
+        dbg!(&self.x);
+
         self.model
             .body_centered_geometry(
                 &self.x, 
@@ -146,14 +172,16 @@ impl Component for PlainRocket {
 
 pub fn main() {
     vehicle_main(PlainRocket {
-        input: GimbalThrustInputReceiver{thrust_gain: 30.0, gimbal_gain: std::f64::consts::PI / 18.0},
+        input: GimbalThrustInputReceiver{thrust_gain: 300.0, gimbal_gain: std::f64::consts::PI / 18.0},
         model: RocketModel { 
-            dry_mass: 10.0, 
-            dry_com: 0.3,
-            initial_propellant_mass: 5.5, 
+            dry_mass: 10.0,
             exhaust_velocity: 1500.0, 
             body_length: 60.0, 
-            body_cross_section: 10.0 },
+            body_cross_section: 10.0,
+            dry_cm: 0.3,
+            dry_inertia: 1000.0,
+            propellant_cm: 0.8,
+            gravity: 1.0, },
         ref_frame: ReferenceFrame::new_from_screen_frame(
             &Vector2::x(), 
             &-Vector2::y(), 
