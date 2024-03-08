@@ -11,6 +11,8 @@ pub mod bicopter;
 
 pub mod plane;
 
+pub mod rocket;
+
 use nalgebra::{DVector, Vector2};
 use ode_solvers::System;
 
