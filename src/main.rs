@@ -1,4 +1,4 @@
-use vehicles::{bicopter, plane};
+use vehicles::{bicopter, plane, rocket};
 
 mod graphical_utils;
 mod reference_frame;
@@ -26,5 +26,5 @@ mod vehicles;
 //use real units
 //cli to choose sim mode
 fn main() {
-    bicopter::position_controlled_bicopter::main()
+    rocket::main()
 }
