@@ -54,15 +54,11 @@ where
     DS: DynamicalSystem + Clone,
     IR: InputReceiver + Clone
 {
-    fn x(&self) -> &DVector<f64> {
-        &self.x
-    }
-
     fn update(&mut self, dt: f64) {
         let mut stepper = ode_solvers::Rk4::new(
             self.clone(), 
             0.0, 
-            ode_solvers::DVector::from_row_slice(self.x().as_slice()), 
+            ode_solvers::DVector::from_row_slice(self.x.as_slice()), 
             dt, 
             dt/5.0);
 
@@ -71,6 +67,16 @@ where
         self.x.copy_from_slice(stepper.y_out().last().expect("should have integrated at least 1 step").as_slice());
     }
 }
+
+// impl<DS: DynamicalSystem, IR: InputReceiver> Component for GenericVehicle<DS, IR> {
+//     fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool) {
+//         todo!()
+//     }
+
+//     fn receive_event(&mut self, ev: &Event<'_, ()>) {
+//         todo!()
+//     }
+// }
 
 pub fn screen_center_x(wid: f64, hei: f64, n: usize) -> DVector<f64> {
     let mut ret = DVector::zeros(n);
@@ -112,15 +118,19 @@ pub struct World<VehicleType> {
     pub camera_option_toggle: bool
 }
 
-impl<VehicleType: Vehicle> Component for World<VehicleType> {
+//ASSUMES STATE VECTORS ALWAYS START WITH X AND Y COORDINATES
+impl<DS: DynamicalSystem, IR: InputReceiver> Component for World<GenericVehicle<DS, IR>> 
+where
+    GenericVehicle<DS, IR>: Component
+{
     fn draw(&mut self, canvas: &mut SimpleCanvas, dt: f32, paused: bool) {
         match self.camera_option {
             CameraOptions::VehicleCentered => {
                 let ref_frame = ReferenceFrame::new_from_screen_frame(
                     &Vector2::x(), 
                     &-Vector2::y(), 
-                &Vector2::new(self.screen_width/2.0 - self.vehicle.x()[0], self.screen_height/2.0 + self.vehicle.x()[1]));
-                self.vehicle.set_reference_frame(&ref_frame);
+                &Vector2::new(self.screen_width/2.0 - self.vehicle.x[0], self.screen_height/2.0 + self.vehicle.x[1]));
+                self.vehicle.ref_frame = ref_frame;
                 self.background.ref_frame = ref_frame;
             },
             CameraOptions::Fixed => {},
@@ -149,7 +159,12 @@ impl<VehicleType: Vehicle> Component for World<VehicleType> {
     }
 }
 
-fn vehicle_main(vehicle: impl Vehicle + 'static, width: f64, height: f64) {
+fn vehicle_main<DS, IR>(vehicle: GenericVehicle<DS, IR>, width: f64, height: f64) 
+where
+    DS: DynamicalSystem + 'static,
+    IR: InputReceiver + 'static,
+    GenericVehicle<DS, IR>: Component
+{
     let ev_loop = egaku2d::glutin::event_loop::EventLoop::new();
 
     let mut drawer = Drawer::new(
