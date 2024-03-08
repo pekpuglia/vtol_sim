@@ -17,6 +17,7 @@ mod vehicles;
 //add config file
 //add ui with control options
 //saturations??
+//geometry: circle radius field actually is diameter!!
 //zoom?
 //make reference frames safer, better use them for initial conditions
 //eliminate dvector? enum map?
