@@ -11,14 +11,20 @@ pub struct BicopterDynamicalModel {
     mass: f64,
     gravity: f64,
     prop_dist: f64,
+    max_thrust: f64
 }
 
 impl BicopterDynamicalModel {
     pub fn new(inertia: f64,
         mass: f64,
         gravity: f64,
-        prop_dist: f64) -> BicopterDynamicalModel {
-        BicopterDynamicalModel { inertia, mass, gravity, prop_dist }
+        prop_dist: f64,
+        max_thrust: f64) -> BicopterDynamicalModel {
+        BicopterDynamicalModel { inertia, mass, gravity, prop_dist, max_thrust }
+    }
+
+    fn clamp_thrust(&self, u: f64) -> f64 {
+        u.clamp(0.0, self.max_thrust)
     }
 }
 
@@ -52,7 +58,7 @@ impl PhysicalModel for BicopterDynamicalModel {
                 frame,
                 GeometryTypes::new_arrow(
                     left, 
-                    (left + 0.7 * u[0] * Vector2::y()).into(), 
+                    (left + 0.7 * self.clamp_thrust(u[0]) * Vector2::y()).into(), 
                     2.0)
             ),
             Geometry::new(
@@ -60,7 +66,7 @@ impl PhysicalModel for BicopterDynamicalModel {
                 frame,
                 GeometryTypes::new_arrow(
                     right.into(), 
-                    (right + 0.7 * u[1] * Vector2::y()).into(), 
+                    (right + 0.7 * self.clamp_thrust(u[1]) * Vector2::y()).into(), 
                     2.0)
             )
         ]
@@ -95,13 +101,16 @@ impl DynamicalSystem for BicopterDynamicalModel {
         x: nalgebra::DVector<f64>, 
         u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
 
+        let actual_thrust_left  = self.clamp_thrust(u[0]);
+        let actual_thrust_right = self.clamp_thrust(u[1]);
+
         dvector![
             x[3],
             x[4],
             x[5],
-            - (u[0] + u[1]) * x[2].sin() / self.mass,
-              (u[0] + u[1]) * x[2].cos() / self.mass - self.gravity,
-            self.prop_dist * (u[1] - u[0]) / (2.0 * self.inertia)
+            - (actual_thrust_left + actual_thrust_right) * x[2].sin() / self.mass,
+              (actual_thrust_left + actual_thrust_right) * x[2].cos() / self.mass - self.gravity,
+            self.prop_dist * (actual_thrust_right - actual_thrust_left) / (2.0 * self.inertia)
         ]
     }
 

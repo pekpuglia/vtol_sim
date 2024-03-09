@@ -27,5 +27,5 @@ mod vehicles;
 //use real units
 //cli to choose sim mode
 fn main() {
-    rocket::main()
+    bicopter::angle_controlled_bicopter::main()
 }

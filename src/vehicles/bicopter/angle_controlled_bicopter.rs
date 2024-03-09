@@ -152,7 +152,8 @@ pub fn main() {
                 1000.0, 
                 1.0, 
                 100.0, 
-                40.0)
+                40.0,
+                100.0)
     );
 
     let angle_controlled_feedback: AngleControlledFeedback = NegativeFeedback::new(
@@ -163,7 +164,7 @@ pub fn main() {
     let angle_feedback_bicopter = AngleFeedbackBicopter {
         model: angle_controlled_feedback,
         input: BicopterForceAngleInputReceiver { 
-            force_gain: 200.0, 
+            force_gain: 300.0, 
             angle_gain: -std::f64::consts::FRAC_PI_2},
         x: screen_center_x(WID, HEI, AngleControlledFeedback::STATE_VECTOR_SIZE),
         u: DVector::zeros(AngleControlledFeedback::INPUT_SIZE),

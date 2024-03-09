@@ -255,6 +255,16 @@ plot(theta_step_response)
 # ╔═╡ 95fc4d93-3e98-492a-948b-7589ad058080
 dcgain(angle_feedback[3, 2] |> sminreal)
 
+# ╔═╡ c81ea5e7-197a-4426-8c7c-1edcc7bf0151
+md"""
+### Ajuste de ganhos de theta considerando empuxo máximo
+
+* LQR + gráfico
+* margem de controle
+* critério do círculo
+* MPC saturando o controlador
+"""
+
 # ╔═╡ 1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 md"""
 # Ajuste de ganhos de x
@@ -421,7 +431,7 @@ position_control_layer = append(xpid,  ypid);
 perturbed_position_control_layer = connect([position_control_layer, Fy_pert],
 [
 	:Fy => :Fycommand
-], w1 = [:Fypert, position_control_layer.u...], z1 = [:Fx, :Fyperturbed]);
+], w1 = [:Fypert, position_control_layer.u...], z1 = [:Fx, :Fyperturbed])
 
 # ╔═╡ a91619ac-59ae-4b5b-9367-529db0f73273
 open_loop = angle_feedback * fxfy_to_ftheta_sys * perturbed_position_control_layer;
@@ -453,6 +463,17 @@ md"""
 
 Os métodos de ajuste de ganhos que apresentei aqui são bastante úteis, apesar de um pouco formais. São um pouco diferentes dos ganhos da PixHawk, porque ela tem muitos ganhos redundantes e uma malha de controle um pouco diferente da apresentada, mas espero que sirva para alguma coisa. Lembro também que esse modelo 3DoF serve para tratar movimentos específicos da dinâmica 6DoF: a dinâmica vertical é idêntica, as dinâmicas de translação horizontal podem ser tratadas uma por vez, e as dinâmicas de arfagem e rolagem também podem ser tratadas uma por vez.
 """
+
+# ╔═╡ 84b9d9f7-82e2-4752-a7d9-f676e754a3a6
+md"""
+# Controle de velocidade com saturação
+"""
+
+# ╔═╡ 14dc066d-6404-4931-a5c9-cb4d109e38e7
+angle_feedback
+
+# ╔═╡ 39cfdb2d-0f16-40eb-82e4-6fe96a750935
+
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2531,6 +2552,7 @@ version = "1.4.1+1"
 # ╠═7d28ec08-ba37-4599-9f8f-a59b2cde334d
 # ╠═346fd3aa-16cd-4a45-a310-18a83609e8a8
 # ╠═95fc4d93-3e98-492a-948b-7589ad058080
+# ╠═c81ea5e7-197a-4426-8c7c-1edcc7bf0151
 # ╟─1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 # ╠═8d8c6806-c2b1-4d3c-8083-8f96a6e71d9b
 # ╠═98639c8e-7eb1-4685-a098-d54f0e1d11fe
@@ -2570,5 +2592,8 @@ version = "1.4.1+1"
 # ╠═830a946d-a973-4f28-825a-a8b25721553d
 # ╠═2d81f724-c1d1-4ee0-87d6-5fad02c5b979
 # ╟─055a4c01-59fa-432e-b07a-fabc9249477f
+# ╠═84b9d9f7-82e2-4752-a7d9-f676e754a3a6
+# ╠═14dc066d-6404-4931-a5c9-cb4d109e38e7
+# ╠═39cfdb2d-0f16-40eb-82e4-6fe96a750935
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
