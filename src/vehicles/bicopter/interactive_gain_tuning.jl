@@ -226,14 +226,85 @@ md"""
 ### Burocracia pra montar a malha de controle de ângulo
 """
 
-# ╔═╡ 6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
-stabilized_theta_feedback = feedback(linear_model * hal, [
+# ╔═╡ ddd126b6-8bd6-4cb6-899c-99b4aa59dba6
+direct_path = linear_model * hal
+
+# ╔═╡ 3bd20e0c-495f-4e4e-857f-e3e689bad9bd
+return_path = named_ss(ss([
 	zeros(1, 6)
 	0 0 Ktheta[1] 0 0 Ktheta[2]
-])
+]),
+	x=[],
+	u=[:x, :y, :theta, :xdot, :ydot, :thetadot],
+	y=[:Ffb, :Mfb]
+)
+
+# ╔═╡ 3c3182b1-ff6d-492e-a1ea-6af33e41e0eb
+minus_M_block = sumblock("M = Mfeedforward - Mfb")
+
+# ╔═╡ 36420376-1cb8-4487-b748-67105a607850
+minus_F_block = sumblock("F = Ffeedforward - Ffb")
+
+# ╔═╡ 6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
+stabilized_theta_feedback = connect(
+	[
+		direct_path,
+		return_path,
+		minus_F_block,
+		minus_M_block
+	],
+	[
+		:x => :x,
+		:y => :y,
+		:theta => :theta,
+		:xdot => :xdot,
+		:ydot => :ydot,
+		:thetadot => :thetadot,
+		:Mfb => :Mfb,
+		:Ffb => :Ffb,
+		:F => :F,
+		:M => :M
+	],
+	w1 = [:Ffeedforward, :Mfeedforward]
+)
+
+# ╔═╡ 50f809f4-91cb-4898-969a-af6b6497600d
+step(stabilized_theta_feedback[3, 2]) |> plot
+
+# ╔═╡ 1b594f28-de6c-4163-ac53-05e768cf6237
+stabilized_theta_open_loop = connect(
+	[
+		direct_path,
+		return_path
+	],
+	[
+		:x => :x,
+		:y => :y,
+		:theta => :theta,
+		:xdot => :xdot,
+		:ydot => :ydot,
+		:thetadot => :thetadot
+	],
+	w1 = [:F, :M]
+)
+
+# ╔═╡ 9fa5717d-6694-4823-b5cf-e9b849bcb006
+feedback_verification = connect([
+	stabilized_theta_open_loop,
+	minus_F_block,
+	minus_M_block
+], [
+	:Mfb => :Mfb,
+	:Ffb => :Ffb,
+	:M => :M,
+	:F => :F
+], w1 = [:Ffeedforward, :Mfeedforward])
+
+# ╔═╡ e7a3f414-86b1-46d3-98f6-8fddf952e15b
+step(feedback_verification[3, 2]) |> plot
 
 # ╔═╡ cfc1c105-2eaf-4d4f-9b66-242801aa357c
-angle_feedback = stabilized_theta_feedback * named_ss(append(ss(1), ss(Ktheta[1])), u=[:F_ext, :theta_ref], y=[:F, :M])
+theta_tracker = stabilized_theta_feedback * named_ss(append(ss(1), ss(Ktheta[1])), u=[:F_ext, :theta_ref], y=[:Ffeedforward, :Mfeedforward])
 
 # ╔═╡ 42dc7599-941a-4560-b82d-1c6e78ce7abc
 md"""
@@ -244,24 +315,68 @@ md"""
 """
 
 # ╔═╡ d22f2119-fee9-44b8-bc4c-04dee7a7f065
-poles(angle_feedback)
+poles(theta_tracker)
 
 # ╔═╡ 7d28ec08-ba37-4599-9f8f-a59b2cde334d
-theta_step_response = step(angle_feedback[3, 2], 10);
+theta_step_response = step(theta_tracker[3, 2], 10);
 
 # ╔═╡ 346fd3aa-16cd-4a45-a310-18a83609e8a8
 plot(theta_step_response)
 
+# ╔═╡ cf8b619e-fa8e-4b31-80f2-6b39d5d6b51f
+step(theta_tracker[end, 2]) |> plot
+
 # ╔═╡ 95fc4d93-3e98-492a-948b-7589ad058080
-dcgain(angle_feedback[3, 2] |> sminreal)
+dcgain(theta_tracker[3, 2] |> sminreal)
+
+# ╔═╡ dfc471f0-ae5a-49bf-a33b-d60d655d582c
+md"""
+### Testes sobre não-linearidades
+"""
+
+# ╔═╡ 8f4c91b7-2c57-4547-85ea-226f26661754
+md"""
+#### Critério do círculo
+"""
+
+# ╔═╡ 4c112732-2334-4a86-8129-9fc54141559f
+bodeplot(stabilized_theta_open_loop[8, 2])
+
+# ╔═╡ 051f3b13-81af-46a6-ae42-6fba14069689
+md"""
+O critério do círculo não se aplica porque o problema não é de Lure (sem feedback de retorno), mas sim o comando é saturado:
+
+``
+\dot{x} = Ax + B\ \text{sat} u
+``
+"""
+
+# ╔═╡ b40ba1ad-1dfe-4648-97d1-73c801521636
+nyquistplot(stabilized_theta_open_loop[8, 2], -100:0.01:100)
+
+# ╔═╡ 20025ae0-723b-4165-a4eb-6bd92d6426cb
+md"""
+#### Construção e simulação do sistema não linear
+"""
+
+# ╔═╡ 92dd1c1c-24ff-4629-a293-2bdd977e68ff
+sat = ControlSystemsBase.saturation(0, 1)
+
+# ╔═╡ 4bcf63a6-16e9-443e-8d07-807bc373adb6
+nonlinear_direct_path = linear_model.sys * [sat 0; 0 sat] * hal.sys
+
+# ╔═╡ 35c91d5d-819b-44a1-8776-a114ba4fe3d7
+nonlinear_feedback = feedback(nonlinear_direct_path, return_path.sys)
+
+# ╔═╡ ce04f595-e865-4c58-99d9-f57cda40a497
+plot(step(nonlinear_feedback[3, 2]))
 
 # ╔═╡ c81ea5e7-197a-4426-8c7c-1edcc7bf0151
 md"""
 ### Ajuste de ganhos de theta considerando empuxo máximo
 
-* LQR + gráfico
+* LQR + gráfico de Momento
 * margem de controle
-* critério do círculo
 * MPC saturando o controlador
 """
 
@@ -275,18 +390,25 @@ O processo é uma mistura de várias coisas que já usamos: escrever a relação
 """
 
 # ╔═╡ 8d8c6806-c2b1-4d3c-8083-8f96a6e71d9b
+# ╠═╡ disabled = true
+#=╠═╡
 function fxfy_to_ftheta(fxfy)
     [
         √(fxfy' * fxfy)
         -atan(fxfy[1], fxfy[2])
     ]
 end
+  ╠═╡ =#
 
 # ╔═╡ 98639c8e-7eb1-4685-a098-d54f0e1d11fe
+#=╠═╡
 linearized_fxfy_matrix = ForwardDiff.jacobian(fxfy_to_ftheta, [0, bicopter.mass*bicopter.gravity])
+  ╠═╡ =#
 
 # ╔═╡ 660b1458-9072-4dc3-a27b-5540f885728f
+#=╠═╡
 fxfy_to_ftheta_sys = named_ss(ss(linearized_fxfy_matrix), u=[:Fx, :Fy], y=[:F_ext, :theta_ref])
+  ╠═╡ =#
 
 # ╔═╡ df0be27e-071a-4f7e-97ce-6235330a1b3b
 md"""
@@ -294,7 +416,9 @@ Construção do sistema dinâmico x. Deixamos como entrada a força em x e como 
 """
 
 # ╔═╡ 8dc26fd9-ff9b-4662-9a39-322036ae74b9
+#=╠═╡
 x_sys = series(fxfy_to_ftheta_sys, angle_feedback)[[1, 4], 1] |> sminreal
+  ╠═╡ =#
 
 # ╔═╡ 7a66b28f-e78e-44df-8963-5e1f41e9ff99
 md"""
@@ -321,8 +445,25 @@ x_error = sumblock("x_error = x_ref - x ");
 # ╔═╡ cb3850fc-4142-464b-beea-003330404477
 minus_xdot = sumblock("minus_xdot = - xdot");
 
+# ╔═╡ 0566407d-c042-447b-bcda-c9d2778ee25a
+#=╠═╡
+feedback(x_sys, xpid, )
+  ╠═╡ =#
+
 # ╔═╡ 9de294a5-4b12-4505-8e10-a87cbb87b697
 
+
+# ╔═╡ f62f8abf-ab48-4154-8c71-4cd4bff0b161
+#=╠═╡
+x_feedback_manual = connect([x_sys, xpid, x_error, minus_xdot],
+[
+	:x => :x,
+	:xdot => :xdot,
+	:x_error => :x_error,
+	:minus_xdot => :minus_xdot,
+	:Fx => :Fx
+], w1 = [:x_ref], z1 = [:x, :xdot])
+  ╠═╡ =#
 
 # ╔═╡ d49da2df-44b0-40fa-92c9-46468b573640
 md"""
@@ -346,25 +487,14 @@ Não faz sentido alocar polos com PID por _motivos_. Então vamos ajustar os 3 g
 # ╔═╡ ee8ff28f-1635-4212-bf2c-5d75c76dadd8
 xpid = pid_block(kix, kpx, kdx, :x);
 
-# ╔═╡ 0566407d-c042-447b-bcda-c9d2778ee25a
-feedback(x_sys, xpid, )
-
-# ╔═╡ f62f8abf-ab48-4154-8c71-4cd4bff0b161
-x_feedback_manual = connect([x_sys, xpid, x_error, minus_xdot],
-[
-	:x => :x,
-	:xdot => :xdot,
-	:x_error => :x_error,
-	:minus_xdot => :minus_xdot,
-	:Fx => :Fx
-], w1 = [:x_ref], z1 = [:x, :xdot])
-
 # ╔═╡ 9c41b4be-b7ec-4581-a754-026c78e7ed14
+#=╠═╡
 begin
 	stepplot = step(x_feedback_manual[1, 1], 10) |> plot
 	pzplot = pzmap(x_feedback_manual[1, 1])
 	plot(stepplot, pzplot, layout=(2,1))
 end
+  ╠═╡ =#
 
 # ╔═╡ dba25d25-0df2-465a-bc41-9f1c150b26da
 md"""
@@ -380,13 +510,27 @@ O comportamento esperado da resposta degrau na referência y é semelhante ao co
 Fy_pert = sumblock("Fyperturbed = Fycommand + Fypert");
 
 # ╔═╡ 92e50e1b-cf8e-4a5e-a4f5-6e00bd525ea7
+#=╠═╡
 y_sys = series(fxfy_to_ftheta_sys, angle_feedback)[[2, 5], 2] * Fy_pert;
+  ╠═╡ =#
 
 # ╔═╡ 4b086517-b877-4cf0-949f-3a2d954d40bb
 y_error = sumblock("y_error = y_ref - y");
 
 # ╔═╡ c44338f2-9e8a-4ca7-91cf-1a8b9d5080ac
 minus_ydot = sumblock("minus_ydot = - ydot");
+
+# ╔═╡ e76284fa-44f1-4fb2-b674-cc29fbc2a7ef
+#=╠═╡
+y_feedback_manual = connect([y_sys, ypid, y_error, minus_ydot],
+[
+	:y => :y,
+	:ydot => :ydot,
+	:y_error => :y_error,
+	:minus_ydot => :minus_ydot,
+	:Fy => :Fycommand
+], w1=[:y_ref, :Fypert], z1=[:y, :ydot])
+  ╠═╡ =#
 
 # ╔═╡ bf237ad2-0e22-40a6-8d59-84aebbbfde5a
 @bind kpy Slider(0:0.01:20, show_value=true)
@@ -400,22 +544,14 @@ minus_ydot = sumblock("minus_ydot = - ydot");
 # ╔═╡ 2b8d0268-e566-4139-8b12-bc53ce4e5983
 ypid = pid_block(kiy, kpy, kdy, :y)
 
-# ╔═╡ e76284fa-44f1-4fb2-b674-cc29fbc2a7ef
-y_feedback_manual = connect([y_sys, ypid, y_error, minus_ydot],
-[
-	:y => :y,
-	:ydot => :ydot,
-	:y_error => :y_error,
-	:minus_ydot => :minus_ydot,
-	:Fy => :Fycommand
-], w1=[:y_ref, :Fypert], z1=[:y, :ydot])
-
 # ╔═╡ bcb9c5d3-d20d-4c8d-9463-168bb6a139a3
+#=╠═╡
 begin
 	step_ref_plot = plot(step(y_feedback_manual[1, 1], 10), label="ref")
 	step_pert_plot = plot(step(y_feedback_manual[1, 2], 10), label="pert")
 	plot(step_ref_plot, step_pert_plot, layout=(2,1))
 end
+  ╠═╡ =#
 
 # ╔═╡ 7d0935e8-a85e-45ed-ad28-5241d55a00e2
 md"""
@@ -434,9 +570,12 @@ perturbed_position_control_layer = connect([position_control_layer, Fy_pert],
 ], w1 = [:Fypert, position_control_layer.u...], z1 = [:Fx, :Fyperturbed])
 
 # ╔═╡ a91619ac-59ae-4b5b-9367-529db0f73273
+#=╠═╡
 open_loop = angle_feedback * fxfy_to_ftheta_sys * perturbed_position_control_layer;
+  ╠═╡ =#
 
 # ╔═╡ 0a326122-9ef8-4213-87bb-2a6a23435348
+#=╠═╡
 closed_loop = connect([open_loop, x_error, y_error, minus_xdot, minus_ydot],
 [
 	:x => :x,
@@ -448,6 +587,7 @@ closed_loop = connect([open_loop, x_error, y_error, minus_xdot, minus_ydot],
 	:ydot => :ydot,
 	:minus_ydot => :minus_ydot
 ], w1 = [:Fypert, :x_ref, :y_ref], z1=[linear_model.x...])
+  ╠═╡ =#
 
 # ╔═╡ 830a946d-a973-4f28-825a-a8b25721553d
 md"""
@@ -455,7 +595,9 @@ md"""
 """
 
 # ╔═╡ 2d81f724-c1d1-4ee0-87d6-5fad02c5b979
+#=╠═╡
 plot(step(closed_loop[3, 2], 10))
+  ╠═╡ =#
 
 # ╔═╡ 055a4c01-59fa-432e-b07a-fabc9249477f
 md"""
@@ -2545,13 +2687,32 @@ version = "1.4.1+1"
 # ╟─3e4b0dde-14b9-42c4-9973-bc12dbccedfd
 # ╠═e4b9e919-a5ef-4d90-abde-abedde4a60ce
 # ╟─6a8231e6-ccdd-473a-9fac-7b1d82189ac8
+# ╠═ddd126b6-8bd6-4cb6-899c-99b4aa59dba6
+# ╠═3bd20e0c-495f-4e4e-857f-e3e689bad9bd
+# ╠═3c3182b1-ff6d-492e-a1ea-6af33e41e0eb
+# ╠═36420376-1cb8-4487-b748-67105a607850
 # ╠═6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
+# ╠═50f809f4-91cb-4898-969a-af6b6497600d
+# ╠═1b594f28-de6c-4163-ac53-05e768cf6237
+# ╠═9fa5717d-6694-4823-b5cf-e9b849bcb006
+# ╠═e7a3f414-86b1-46d3-98f6-8fddf952e15b
 # ╠═cfc1c105-2eaf-4d4f-9b66-242801aa357c
 # ╟─42dc7599-941a-4560-b82d-1c6e78ce7abc
 # ╠═d22f2119-fee9-44b8-bc4c-04dee7a7f065
 # ╠═7d28ec08-ba37-4599-9f8f-a59b2cde334d
 # ╠═346fd3aa-16cd-4a45-a310-18a83609e8a8
+# ╠═cf8b619e-fa8e-4b31-80f2-6b39d5d6b51f
 # ╠═95fc4d93-3e98-492a-948b-7589ad058080
+# ╠═dfc471f0-ae5a-49bf-a33b-d60d655d582c
+# ╠═8f4c91b7-2c57-4547-85ea-226f26661754
+# ╠═4c112732-2334-4a86-8129-9fc54141559f
+# ╠═051f3b13-81af-46a6-ae42-6fba14069689
+# ╠═b40ba1ad-1dfe-4648-97d1-73c801521636
+# ╠═20025ae0-723b-4165-a4eb-6bd92d6426cb
+# ╠═92dd1c1c-24ff-4629-a293-2bdd977e68ff
+# ╠═4bcf63a6-16e9-443e-8d07-807bc373adb6
+# ╠═35c91d5d-819b-44a1-8776-a114ba4fe3d7
+# ╠═ce04f595-e865-4c58-99d9-f57cda40a497
 # ╠═c81ea5e7-197a-4426-8c7c-1edcc7bf0151
 # ╟─1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 # ╠═8d8c6806-c2b1-4d3c-8083-8f96a6e71d9b
