@@ -176,7 +176,7 @@ impl Component for PlainRocket {
 
 pub fn main() {
     vehicle_main(PlainRocket {
-        input: GimbalThrustInputReceiver{thrust_gain: 3000.0, gimbal_gain: std::f64::consts::PI / 18.0},
+        input: GimbalThrustInputReceiver{thrust_gain: 5000.0, gimbal_gain: std::f64::consts::PI / 18.0},
         model: RocketModel { 
             dry_mass: 10.0,
             exhaust_velocity: 5000.0, 

@@ -184,7 +184,7 @@ pub fn main() {
                     1.0, 
                     100.0, 
                     40.0,
-                    300.0)
+                    100.0)
         );
     
         let angle_controlled_feedback: AngleControlledFeedback = NegativeFeedback::new(
