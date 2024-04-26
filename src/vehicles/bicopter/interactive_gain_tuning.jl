@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.29
+# v0.19.41
 
 using Markdown
 using InteractiveUtils
@@ -180,6 +180,35 @@ hal = named_ss(ss([
     1/2 -1/(bicopter.prop_dist*2)
     1/2 1/(bicopter.prop_dist*2)
 ]), :hal, u=[:F, :M], y=[:lthrust, :rthrust])
+
+# ╔═╡ 8d892186-6db1-405a-8f70-5c0e7af18e63
+md"""
+# Desacoplamento das dinâmicas rotacional e translacional
+"""
+
+# ╔═╡ ad5f221f-0aaf-40be-b968-78a14b05e3ed
+linear_model
+
+# ╔═╡ 17fce8a9-ee42-42dd-b79a-aeaacbbeda62
+rot_components = [any(xname .== [:theta, :thetadot]) for xname in linear_model.x]
+
+# ╔═╡ 64bddf30-a4b1-46c4-a07b-e69b1a957a4a
+Arot = A[rot_components, rot_components]
+
+# ╔═╡ ebd24a36-74bc-4ea0-999b-09009ed90fe9
+Atrans = A[.!rot_components, .!rot_components]
+
+# ╔═╡ 5c2a4b0d-84af-427e-b623-e441dbae557f
+md"""
+Brot = apenas inputs externos
+Btrans = inputs externos + entrada de ``\theta,\ \dot{\theta}``
+"""
+
+# ╔═╡ ec3cabea-3e7d-42fc-88ce-f9660d7122af
+Brot = B[rot_components, :]
+
+# ╔═╡ 6791d119-bcc7-4291-a42b-5a4f4e6e2dec
+Btrans = [B[.!rot_components, :] A[.!rot_components, rot_components]]
 
 # ╔═╡ 7752cef5-6960-495c-b6df-11ea63c28b8f
 md"""
@@ -2513,6 +2542,14 @@ version = "1.4.1+1"
 # ╠═f74c28d9-647a-40f9-8ec5-e68182f365d2
 # ╟─056522ff-ab4e-40c3-8386-a24d84f6df38
 # ╠═a36681a0-484a-4afe-8dc2-7b28ab056013
+# ╠═8d892186-6db1-405a-8f70-5c0e7af18e63
+# ╠═ad5f221f-0aaf-40be-b968-78a14b05e3ed
+# ╠═17fce8a9-ee42-42dd-b79a-aeaacbbeda62
+# ╠═64bddf30-a4b1-46c4-a07b-e69b1a957a4a
+# ╠═ebd24a36-74bc-4ea0-999b-09009ed90fe9
+# ╠═5c2a4b0d-84af-427e-b623-e441dbae557f
+# ╠═ec3cabea-3e7d-42fc-88ce-f9660d7122af
+# ╠═6791d119-bcc7-4291-a42b-5a4f4e6e2dec
 # ╟─7752cef5-6960-495c-b6df-11ea63c28b8f
 # ╠═496d5ce6-2a01-486f-9953-3bd57ead9b37
 # ╟─3e5a7f23-b9e5-46ee-bb12-1682852685e7
