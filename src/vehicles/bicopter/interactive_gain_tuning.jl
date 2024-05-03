@@ -271,21 +271,16 @@ md"""
 ### Burocracia pra montar a malha de controle de ângulo
 """
 
-# ╔═╡ 5b650bdc-9502-49fb-b017-dffcbfcdfd0e
-[(use_comp) ? Ktheta[ind] : 0 for (use_comp, ind) in zip(rot_components, cumsum(rot_components))]
-
-# ╔═╡ 135eea2e-3b6c-4750-a978-40c7555105b9
-angle_feedback_matrix = named_ss(ss(
-	[
-		zeros(1, 6)
-		0 0 Ktheta[1] 0 0 Ktheta[2]
-	]),
-	u=[:x, :y, :theta, :xdot, :ydot, :thetadot],
-	y=[:F, :M]
+# ╔═╡ 11ef768e-acc5-44e7-8069-f6955b6e1355
+angle_feedback_matrix = named_ss(ss(Ktheta),
+	u=[:theta, :thetadot],
+	y=[:M]
 )
 
 # ╔═╡ 6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
-stabilized_theta_feedback = feedback(model_hal, angle_feedback_matrix)
+stabilized_theta_feedback = feedback(model_hal, angle_feedback_matrix,
+	u1=[:M],
+	y1=[:theta, :thetadot])
 
 # ╔═╡ b62bb7cb-44a9-4936-a3d8-5c7f6355286c
 dcgain(stabilized_theta_feedback[:theta, :M] |> sminreal) * Ktheta[1]
@@ -324,10 +319,10 @@ Possível outputar direto do angle_tracker?
 """
 
 # ╔═╡ 412370d0-a31b-4ad3-8106-768b471f5265
-control_output = angle_feedback_matrix * angle_tracker[:, :theta_ref] |> sminreal
+control_output = angle_feedback_matrix * angle_tracker[[:theta, :thetadot], :theta_ref] |> sminreal
 
 # ╔═╡ feb04639-cb30-4ddf-923e-fab01b609190
-control_output[:M, :theta_ref] |> step |> plot
+step(control_output[:M, :theta_ref], 10) |> plot
 
 # ╔═╡ 1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 md"""
@@ -378,7 +373,7 @@ md"""
 xw0 = thetaw0 / w0divider
 
 # ╔═╡ a4097a3a-d5fa-4acc-a532-e2fabbfbc534
-xdelta = 0.5
+xdelta = 0.8
 
 # ╔═╡ 47bd9caf-5285-43ba-b1fb-0b917f5b7d76
 x_poles =
@@ -407,11 +402,30 @@ xfeedback_matrix
 # ╔═╡ 1fafa154-48fb-4458-b51a-15205a022947
 angle_tracker
 
+# ╔═╡ 91a518cd-95ed-4517-8eea-708aa99a5129
+stabilized_x_feedback = feedback(angle_tracker, xfeedback_matrix,
+	u1=[:theta_ref],
+	y1=[:x, :xdot])
+
+# ╔═╡ 9f81d3d7-a82d-416c-81ca-84f50710bb74
+poles(stabilized_x_feedback)
+
+# ╔═╡ 97300ca8-e59a-4084-8221-2d1def828eaf
+step(stabilized_x_feedback[:x, :theta_ref]) |> plot
+
+# ╔═╡ fbdc668a-15fe-4dd6-95cc-2dae1da2307a
+x_gain = named_ss(
+	ss(1 / dcgain(stabilized_x_feedback[:x, :theta_ref] |> sminreal)[1]),
+	u=[:x_ref], y=[:theta_ref])
+
+# ╔═╡ 97aac666-0457-4728-9a68-11227efd255c
+x_tracker = connect([x_gain, stabilized_x_feedback], [:theta_ref => :theta_ref], w1=[:x_ref, :F_ext])
+
 # ╔═╡ bdfb9680-fb6f-4aeb-813e-cb169505f5d1
 poles(x_tracker)
 
 # ╔═╡ 504a3b88-7647-4015-a985-cf7776878a01
-plot(step(x_tracker[:x, :x_ref], 5))
+plot(step(x_tracker[:x, :x_ref], 10))
 
 # ╔═╡ d49da2df-44b0-40fa-92c9-46468b573640
 md"""
@@ -437,11 +451,6 @@ O comportamento esperado da resposta degrau na referência y é semelhante ao co
 error_integrator = named_ss(
 	ss([0], [1], I, 0),
 	u=[:error], x=[:errorint], y=[:errorint])
-
-# ╔═╡ 75e6aef7-7b73-41d1-bcbe-2f1c76ff23c0
-temp_3or_x_sys = connect(
-	[error_integrator, x_sys], 
-	[:x => :error], w1=[:theta1], z1=[:x, :xdot, :errorint])
 
 # ╔═╡ 87d097ae-280b-4421-a7d5-7a8ebe43860a
 Fy_pert = sumblock("Fyperturbed = Fycommand + Fypert");
@@ -2611,8 +2620,7 @@ version = "1.4.1+1"
 # ╟─3e4b0dde-14b9-42c4-9973-bc12dbccedfd
 # ╠═e4b9e919-a5ef-4d90-abde-abedde4a60ce
 # ╟─6a8231e6-ccdd-473a-9fac-7b1d82189ac8
-# ╠═5b650bdc-9502-49fb-b017-dffcbfcdfd0e
-# ╠═135eea2e-3b6c-4750-a978-40c7555105b9
+# ╠═11ef768e-acc5-44e7-8069-f6955b6e1355
 # ╠═6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
 # ╠═b62bb7cb-44a9-4936-a3d8-5c7f6355286c
 # ╠═cfc1c105-2eaf-4d4f-9b66-242801aa357c
@@ -2634,18 +2642,22 @@ version = "1.4.1+1"
 # ╠═df0be27e-071a-4f7e-97ce-6235330a1b3b
 # ╠═8dc26fd9-ff9b-4662-9a39-322036ae74b9
 # ╟─7a66b28f-e78e-44df-8963-5e1f41e9ff99
-# ╠═75e6aef7-7b73-41d1-bcbe-2f1c76ff23c0
 # ╠═c569a4cc-c02a-43b5-8286-fcba98d81609
 # ╠═c38e43ed-cb92-4312-b340-4cf7dfb443e0
 # ╠═a4097a3a-d5fa-4acc-a532-e2fabbfbc534
 # ╠═47bd9caf-5285-43ba-b1fb-0b917f5b7d76
 # ╟─c19455a8-509a-43bc-a8c0-2b07de8515f8
-# ╟─ae615665-7983-474c-8816-50f3add9f6d6
-# ╟─8cb028d0-5a47-4e04-adba-6bd47eea18a5
+# ╠═ae615665-7983-474c-8816-50f3add9f6d6
+# ╠═8cb028d0-5a47-4e04-adba-6bd47eea18a5
 # ╠═1b506afc-b6d0-4a99-bc86-f3447dcc2ba5
 # ╠═f62f8abf-ab48-4154-8c71-4cd4bff0b161
 # ╠═029b17db-f8bb-4fb8-a44c-507bf5523fdb
 # ╠═1fafa154-48fb-4458-b51a-15205a022947
+# ╠═91a518cd-95ed-4517-8eea-708aa99a5129
+# ╠═9f81d3d7-a82d-416c-81ca-84f50710bb74
+# ╠═97300ca8-e59a-4084-8221-2d1def828eaf
+# ╠═fbdc668a-15fe-4dd6-95cc-2dae1da2307a
+# ╠═97aac666-0457-4728-9a68-11227efd255c
 # ╠═bdfb9680-fb6f-4aeb-813e-cb169505f5d1
 # ╠═504a3b88-7647-4015-a985-cf7776878a01
 # ╟─d49da2df-44b0-40fa-92c9-46468b573640
