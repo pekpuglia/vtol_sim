@@ -187,16 +187,16 @@ md"""
 """
 
 # ╔═╡ ad5f221f-0aaf-40be-b968-78a14b05e3ed
-linear_model
+model_hal = linear_model * hal
 
 # ╔═╡ 17fce8a9-ee42-42dd-b79a-aeaacbbeda62
 rot_components = [any(xname .== [:theta, :thetadot]) for xname in linear_model.x]
 
 # ╔═╡ 64bddf30-a4b1-46c4-a07b-e69b1a957a4a
-Arot = A[rot_components, rot_components]
+Arot = model_hal.A[rot_components, rot_components]
 
 # ╔═╡ ebd24a36-74bc-4ea0-999b-09009ed90fe9
-Atrans = A[.!rot_components, .!rot_components]
+Atrans = model_hal.A[.!rot_components, .!rot_components]
 
 # ╔═╡ 5c2a4b0d-84af-427e-b623-e441dbae557f
 md"""
@@ -205,10 +205,26 @@ Btrans = inputs externos + entrada de ``\theta,\ \dot{\theta}``
 """
 
 # ╔═╡ ec3cabea-3e7d-42fc-88ce-f9660d7122af
-Brot = B[rot_components, :]
+Brot = model_hal.B[rot_components, :]
 
 # ╔═╡ 6791d119-bcc7-4291-a42b-5a4f4e6e2dec
-Btrans = [B[.!rot_components, :] A[.!rot_components, rot_components]]
+Btrans = [model_hal.B[.!rot_components, :] model_hal.A[.!rot_components, rot_components]]
+
+# ╔═╡ 6bc70cfb-9ecb-446a-a43e-3efc6b147cc2
+rot_sys = named_ss(
+	ss(Arot, Brot, I, 0),
+	x=[:theta, :thetadot],
+	y=[:theta, :thetadot],
+	u=[:F, :M]
+)
+
+# ╔═╡ 44619c6b-d2bb-4a0c-9d82-4b7ced9b730e
+trans_sys = named_ss(
+	ss(Atrans, Btrans, I, 0),
+	x=[:x, :y, :xdot, :ydot],
+	y=[:x, :y, :xdot, :ydot],
+	u=[:F, :M, :theta1, :thetadot1]
+)
 
 # ╔═╡ 7752cef5-6960-495c-b6df-11ea63c28b8f
 md"""
@@ -218,7 +234,7 @@ Como previamente mencionado, a dinâmica rotacional não depende da dinâmica tr
 """
 
 # ╔═╡ 496d5ce6-2a01-486f-9953-3bd57ead9b37
-theta_dynsys = (series(hal, linear_model))[[3, 6], 2] |> sminreal
+theta_dynsys = rot_sys[:, :M]
 
 # ╔═╡ 3e5a7f23-b9e5-46ee-bb12-1682852685e7
 md"""
@@ -229,7 +245,7 @@ Podemos agora impor alguns requisitos como tempo de resposta tᵣ (para 5% de er
 tr = 1 #s
 
 # ╔═╡ 4cd5f41d-7026-4c33-b72f-a9e3a3dd6054
-delta = 0.7
+thetadelta = 0.7
 
 # ╔═╡ 5171efe0-4142-4848-ac6e-a2ba826c829b
 md"""
@@ -237,10 +253,10 @@ Fórmula aproximada pra frequência natural do sistema com base no tempo de resp
 """
 
 # ╔═╡ aaf169f9-91bf-4b4b-8804-e9650560ec75
-wn = 3 / (tr * delta)
+thetaw0 = 3 / (tr * thetadelta)
 
 # ╔═╡ 5657d82b-acca-4e53-84eb-140a122962cd
-desired_poles = - wn*delta .+ wn*√(1-delta^2)*im * [1;-1]
+desired_poles = - thetaw0*thetadelta .+ thetaw0*√(1-thetadelta^2)*im * [1;-1]
 
 # ╔═╡ 3e4b0dde-14b9-42c4-9973-bc12dbccedfd
 md"""
@@ -255,14 +271,27 @@ md"""
 ### Burocracia pra montar a malha de controle de ângulo
 """
 
+# ╔═╡ 5b650bdc-9502-49fb-b017-dffcbfcdfd0e
+[(use_comp) ? Ktheta[ind] : 0 for (use_comp, ind) in zip(rot_components, cumsum(rot_components))]
+
+# ╔═╡ 135eea2e-3b6c-4750-a978-40c7555105b9
+angle_feedback_matrix = named_ss(ss(
+	[
+		zeros(1, 6)
+		0 0 Ktheta[1] 0 0 Ktheta[2]
+	]),
+	u=[:x, :y, :theta, :xdot, :ydot, :thetadot],
+	y=[:F, :M]
+)
+
 # ╔═╡ 6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
-stabilized_theta_feedback = feedback(linear_model * hal, [
-	zeros(1, 6)
-	0 0 Ktheta[1] 0 0 Ktheta[2]
-])
+stabilized_theta_feedback = feedback(model_hal, angle_feedback_matrix)
+
+# ╔═╡ b62bb7cb-44a9-4936-a3d8-5c7f6355286c
+dcgain(stabilized_theta_feedback[:theta, :M] |> sminreal) * Ktheta[1]
 
 # ╔═╡ cfc1c105-2eaf-4d4f-9b66-242801aa357c
-angle_feedback = stabilized_theta_feedback * named_ss(append(ss(1), ss(Ktheta[1])), u=[:F_ext, :theta_ref], y=[:F, :M])
+angle_tracker = stabilized_theta_feedback * named_ss(append(ss(1), ss(Ktheta[1])), u=[:F_ext, :theta_ref], y=[:F, :M])
 
 # ╔═╡ 42dc7599-941a-4560-b82d-1c6e78ce7abc
 md"""
@@ -273,22 +302,38 @@ md"""
 """
 
 # ╔═╡ d22f2119-fee9-44b8-bc4c-04dee7a7f065
-poles(angle_feedback)
+poles(angle_tracker)
 
 # ╔═╡ 7d28ec08-ba37-4599-9f8f-a59b2cde334d
-theta_step_response = step(angle_feedback[3, 2], 10);
+theta_step_response = step(angle_tracker[:theta, :theta_ref], 5);
 
 # ╔═╡ 346fd3aa-16cd-4a45-a310-18a83609e8a8
 plot(theta_step_response)
 
+# ╔═╡ 04d71145-c214-493d-a99c-6b1a7d56cd65
+stepinfo(theta_step_response)
+
 # ╔═╡ 95fc4d93-3e98-492a-948b-7589ad058080
-dcgain(angle_feedback[3, 2] |> sminreal)
+dcgain(angle_tracker[3, 2] |> sminreal)
+
+# ╔═╡ a6273a46-6618-4c29-bb83-dd095b995fd2
+md"""
+#### Magnitude do controle
+
+Possível outputar direto do angle_tracker?
+"""
+
+# ╔═╡ 412370d0-a31b-4ad3-8106-768b471f5265
+control_output = angle_feedback_matrix * angle_tracker[:, :theta_ref] |> sminreal
+
+# ╔═╡ feb04639-cb30-4ddf-923e-fab01b609190
+control_output[:M, :theta_ref] |> step |> plot
 
 # ╔═╡ 1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 md"""
 # Ajuste de ganhos de x
 
-Agora, vamos aproveitar o fato de que podemos causar forças horizontais sobre o drone mudando seu ângulo para usarmos a malha de controle de ângulo como um componente da malha de controle de posição. O ``angle\_feedback`` tem como entradas uma força total e uma referência de ângulo. Gostaríamos de pensar em ``F_x`` e ``F_y``, já que essas são as forças mais naturais para o controle de posição. Assim, vamos fazer uma segunda HAL, dessa vez convertendo ``F_x`` e ``F_y`` em F e ``θ_{ref}``.
+Agora, vamos aproveitar o fato de que podemos causar forças horizontais sobre o drone mudando seu ângulo para usarmos a malha de controle de ângulo como um componente da malha de controle de posição. O ``angle\_feedback`` tem como entradas uma força total e uma referência de ângulo. Gostaríamos de pensar em ``F_x`` e ``F_y``, já que essas são as forças mais naturais para o controle de posição. Assim, vamos fazer uma segunda HAL (ou um segundo bloco de alocação de comandos), dessa vez convertendo ``F_x`` e ``F_y`` em F e ``θ_{ref}``.
 
 O processo é uma mistura de várias coisas que já usamos: escrever a relação não linear, linearizar ao redor do ponto de operação, construir o modelo de espaço de estados.
 """
@@ -301,47 +346,72 @@ function fxfy_to_ftheta(fxfy)
     ]
 end
 
+# ╔═╡ 10d208ca-e813-4ec4-b576-ac0cc931a69a
+Fxe = 0
+
+# ╔═╡ 5cb5d15c-afbd-4a3f-833f-2634fab2f26e
+Fye = bicopter.mass * bicopter.gravity
+
 # ╔═╡ 98639c8e-7eb1-4685-a098-d54f0e1d11fe
-linearized_fxfy_matrix = ForwardDiff.jacobian(fxfy_to_ftheta, [0, bicopter.mass*bicopter.gravity])
+linearized_fxfy_matrix = ForwardDiff.jacobian(fxfy_to_ftheta, [Fxe, Fye])
 
 # ╔═╡ 660b1458-9072-4dc3-a27b-5540f885728f
 fxfy_to_ftheta_sys = named_ss(ss(linearized_fxfy_matrix), u=[:Fx, :Fy], y=[:F_ext, :theta_ref])
 
 # ╔═╡ df0be27e-071a-4f7e-97ce-6235330a1b3b
 md"""
-Construção do sistema dinâmico x. Deixamos como entrada a força em x e como saída, a posição e velocidade. Observe que o sistema é de ordem 4, pois a dinâmica rotacional está "embutida" nele!
+Construção do sistema dinâmico x. Deixamos como entrada a força em x e a saída da dinãmica rotacional e como saída, a posição e velocidade.
 """
 
 # ╔═╡ 8dc26fd9-ff9b-4662-9a39-322036ae74b9
-x_sys = series(fxfy_to_ftheta_sys, angle_feedback)[[1, 4], 1] |> sminreal
+x_sys = trans_sys[[:x, :xdot], :theta1] |> sminreal
 
 # ╔═╡ 7a66b28f-e78e-44df-8963-5e1f41e9ff99
 md"""
 ### Burocracias para a construção do sistema com feedback
 """
 
-# ╔═╡ 4eb69208-1d8c-4f69-99d9-6e3d79b2c868
-generic_pid(var::Symbol) = named_ss(
-	ss([0], [1 0], [0; 1; 0], [1 0; 0 0; 0 1]), 
-	u = [Symbol(var, :_error), Symbol(:minus_, var, :dot)], 
-	x = [Symbol(:int_, var)],
-	y = [:P, :I, :D]
-);
+# ╔═╡ c569a4cc-c02a-43b5-8286-fcba98d81609
+@bind w0divider Slider(5:50, show_value=true)
 
-# ╔═╡ 67b15bd9-94e2-474d-9328-43cdf2cf5aec
-pid_block(ki, kp, kd, var::Symbol) = named_ss(
-	ss([kp ki kd]),
-	u=[:P, :I, :D],
-	y=[Symbol(:F, var)]) * generic_pid(var);
+# ╔═╡ c38e43ed-cb92-4312-b340-4cf7dfb443e0
+xw0 = thetaw0 / w0divider
 
-# ╔═╡ f0c95638-73e0-452a-aac7-c1ff469c158c
-x_error = sumblock("x_error = x_ref - x ");
+# ╔═╡ a4097a3a-d5fa-4acc-a532-e2fabbfbc534
+xdelta = 0.5
 
-# ╔═╡ cb3850fc-4142-464b-beea-003330404477
-minus_xdot = sumblock("minus_xdot = - xdot");
+# ╔═╡ 47bd9caf-5285-43ba-b1fb-0b917f5b7d76
+x_poles =
+	-xw0*xdelta .+ xw0*√(1-xdelta^2)im * [-1;1]
 
-# ╔═╡ 9de294a5-4b12-4505-8e10-a87cbb87b697
+# ╔═╡ c19455a8-509a-43bc-a8c0-2b07de8515f8
+Kx = place(x_sys, x_poles) |> real
 
+# ╔═╡ ae615665-7983-474c-8816-50f3add9f6d6
+xfeedback_matrix = named_ss(ss(Kx), u=[:xK, :xdotK], y=[:theta_refK])
+
+# ╔═╡ 8cb028d0-5a47-4e04-adba-6bd47eea18a5
+feedback(x_sys, xfeedback_matrix) |> poles
+
+# ╔═╡ 1b506afc-b6d0-4a99-bc86-f3447dcc2ba5
+md"""
+### System with x integral
+"""
+
+# ╔═╡ f62f8abf-ab48-4154-8c71-4cd4bff0b161
+x_error = sumblock("xerror = x_ref - xfeedback")
+
+# ╔═╡ 029b17db-f8bb-4fb8-a44c-507bf5523fdb
+xfeedback_matrix
+
+# ╔═╡ 1fafa154-48fb-4458-b51a-15205a022947
+angle_tracker
+
+# ╔═╡ bdfb9680-fb6f-4aeb-813e-cb169505f5d1
+poles(x_tracker)
+
+# ╔═╡ 504a3b88-7647-4015-a985-cf7776878a01
+plot(step(x_tracker[:x, :x_ref], 5))
 
 # ╔═╡ d49da2df-44b0-40fa-92c9-46468b573640
 md"""
@@ -353,38 +423,6 @@ Não faz sentido alocar polos com PID por _motivos_. Então vamos ajustar os 3 g
 * iterar sobre os ganhos até obter o tempo de resposta desejado.
 """
 
-# ╔═╡ 2a534cbf-2a89-42d9-bbe0-4ffdaf7808d0
-@bind kpx Slider(0:0.01:5, show_value=true)
-
-# ╔═╡ f5ee12df-62a8-49d5-ad71-87f27758cbeb
-@bind kix Slider(0:0.01:5, show_value = true)
-
-# ╔═╡ 7eb19276-dc1a-4da7-a51e-9cd91d812cef
-@bind kdx Slider(0:0.01:5, show_value = true)
-
-# ╔═╡ ee8ff28f-1635-4212-bf2c-5d75c76dadd8
-xpid = pid_block(kix, kpx, kdx, :x);
-
-# ╔═╡ 0566407d-c042-447b-bcda-c9d2778ee25a
-feedback(x_sys, xpid, )
-
-# ╔═╡ f62f8abf-ab48-4154-8c71-4cd4bff0b161
-x_feedback_manual = connect([x_sys, xpid, x_error, minus_xdot],
-[
-	:x => :x,
-	:xdot => :xdot,
-	:x_error => :x_error,
-	:minus_xdot => :minus_xdot,
-	:Fx => :Fx
-], w1 = [:x_ref], z1 = [:x, :xdot])
-
-# ╔═╡ 9c41b4be-b7ec-4581-a754-026c78e7ed14
-begin
-	stepplot = step(x_feedback_manual[1, 1], 10) |> plot
-	pzplot = pzmap(x_feedback_manual[1, 1])
-	plot(stepplot, pzplot, layout=(2,1))
-end
-
 # ╔═╡ dba25d25-0df2-465a-bc41-9f1c150b26da
 md"""
 # Ajuste de ganhos em y
@@ -394,6 +432,16 @@ Agora, vamos dar maior atenção à rejeição de perturbações, para simular u
 O comportamento esperado da resposta degrau na referência y é semelhante ao comportamento obtido em x, ou em theta: uma curva suave que se desloca do 0 para o 1. Por outro lado, queremos que a resposta degrau da perturbação tenda a 0.
 
 """
+
+# ╔═╡ 7cc9f759-ccd6-4b54-8634-2592b132bbca
+error_integrator = named_ss(
+	ss([0], [1], I, 0),
+	u=[:error], x=[:errorint], y=[:errorint])
+
+# ╔═╡ 75e6aef7-7b73-41d1-bcbe-2f1c76ff23c0
+temp_3or_x_sys = connect(
+	[error_integrator, x_sys], 
+	[:x => :error], w1=[:theta1], z1=[:x, :xdot, :errorint])
 
 # ╔═╡ 87d097ae-280b-4421-a7d5-7a8ebe43860a
 Fy_pert = sumblock("Fyperturbed = Fycommand + Fypert");
@@ -2550,6 +2598,8 @@ version = "1.4.1+1"
 # ╠═5c2a4b0d-84af-427e-b623-e441dbae557f
 # ╠═ec3cabea-3e7d-42fc-88ce-f9660d7122af
 # ╠═6791d119-bcc7-4291-a42b-5a4f4e6e2dec
+# ╠═6bc70cfb-9ecb-446a-a43e-3efc6b147cc2
+# ╠═44619c6b-d2bb-4a0c-9d82-4b7ced9b730e
 # ╟─7752cef5-6960-495c-b6df-11ea63c28b8f
 # ╠═496d5ce6-2a01-486f-9953-3bd57ead9b37
 # ╟─3e5a7f23-b9e5-46ee-bb12-1682852685e7
@@ -2561,34 +2611,46 @@ version = "1.4.1+1"
 # ╟─3e4b0dde-14b9-42c4-9973-bc12dbccedfd
 # ╠═e4b9e919-a5ef-4d90-abde-abedde4a60ce
 # ╟─6a8231e6-ccdd-473a-9fac-7b1d82189ac8
+# ╠═5b650bdc-9502-49fb-b017-dffcbfcdfd0e
+# ╠═135eea2e-3b6c-4750-a978-40c7555105b9
 # ╠═6f0e8bfc-59e2-43d1-8bd3-8ff4b5a4a0ef
+# ╠═b62bb7cb-44a9-4936-a3d8-5c7f6355286c
 # ╠═cfc1c105-2eaf-4d4f-9b66-242801aa357c
 # ╟─42dc7599-941a-4560-b82d-1c6e78ce7abc
 # ╠═d22f2119-fee9-44b8-bc4c-04dee7a7f065
 # ╠═7d28ec08-ba37-4599-9f8f-a59b2cde334d
 # ╠═346fd3aa-16cd-4a45-a310-18a83609e8a8
+# ╠═04d71145-c214-493d-a99c-6b1a7d56cd65
 # ╠═95fc4d93-3e98-492a-948b-7589ad058080
+# ╠═a6273a46-6618-4c29-bb83-dd095b995fd2
+# ╠═412370d0-a31b-4ad3-8106-768b471f5265
+# ╠═feb04639-cb30-4ddf-923e-fab01b609190
 # ╟─1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 # ╠═8d8c6806-c2b1-4d3c-8083-8f96a6e71d9b
+# ╠═10d208ca-e813-4ec4-b576-ac0cc931a69a
+# ╠═5cb5d15c-afbd-4a3f-833f-2634fab2f26e
 # ╠═98639c8e-7eb1-4685-a098-d54f0e1d11fe
 # ╠═660b1458-9072-4dc3-a27b-5540f885728f
-# ╟─df0be27e-071a-4f7e-97ce-6235330a1b3b
+# ╠═df0be27e-071a-4f7e-97ce-6235330a1b3b
 # ╠═8dc26fd9-ff9b-4662-9a39-322036ae74b9
 # ╟─7a66b28f-e78e-44df-8963-5e1f41e9ff99
-# ╠═4eb69208-1d8c-4f69-99d9-6e3d79b2c868
-# ╠═67b15bd9-94e2-474d-9328-43cdf2cf5aec
-# ╠═f0c95638-73e0-452a-aac7-c1ff469c158c
-# ╠═cb3850fc-4142-464b-beea-003330404477
-# ╠═ee8ff28f-1635-4212-bf2c-5d75c76dadd8
-# ╠═0566407d-c042-447b-bcda-c9d2778ee25a
-# ╠═9de294a5-4b12-4505-8e10-a87cbb87b697
+# ╠═75e6aef7-7b73-41d1-bcbe-2f1c76ff23c0
+# ╠═c569a4cc-c02a-43b5-8286-fcba98d81609
+# ╠═c38e43ed-cb92-4312-b340-4cf7dfb443e0
+# ╠═a4097a3a-d5fa-4acc-a532-e2fabbfbc534
+# ╠═47bd9caf-5285-43ba-b1fb-0b917f5b7d76
+# ╟─c19455a8-509a-43bc-a8c0-2b07de8515f8
+# ╟─ae615665-7983-474c-8816-50f3add9f6d6
+# ╟─8cb028d0-5a47-4e04-adba-6bd47eea18a5
+# ╠═1b506afc-b6d0-4a99-bc86-f3447dcc2ba5
 # ╠═f62f8abf-ab48-4154-8c71-4cd4bff0b161
+# ╠═029b17db-f8bb-4fb8-a44c-507bf5523fdb
+# ╠═1fafa154-48fb-4458-b51a-15205a022947
+# ╠═bdfb9680-fb6f-4aeb-813e-cb169505f5d1
+# ╠═504a3b88-7647-4015-a985-cf7776878a01
 # ╟─d49da2df-44b0-40fa-92c9-46468b573640
-# ╠═2a534cbf-2a89-42d9-bbe0-4ffdaf7808d0
-# ╠═f5ee12df-62a8-49d5-ad71-87f27758cbeb
-# ╠═7eb19276-dc1a-4da7-a51e-9cd91d812cef
-# ╠═9c41b4be-b7ec-4581-a754-026c78e7ed14
 # ╟─dba25d25-0df2-465a-bc41-9f1c150b26da
+# ╠═7cc9f759-ccd6-4b54-8634-2592b132bbca
 # ╠═87d097ae-280b-4421-a7d5-7a8ebe43860a
 # ╠═92e50e1b-cf8e-4a5e-a4f5-6e00bd525ea7
 # ╠═2b8d0268-e566-4139-8b12-bc53ce4e5983
