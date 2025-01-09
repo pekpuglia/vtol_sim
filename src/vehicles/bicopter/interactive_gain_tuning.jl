@@ -32,6 +32,9 @@ using ForwardDiff
 # ╔═╡ fb324b41-d2f3-421d-b92c-543a89eb6ba7
 using LinearAlgebra
 
+# ╔═╡ 540dc67f-52b5-49f5-bdda-021a8ace0e35
+using DifferentialEquations
+
 # ╔═╡ a9b91bc0-c386-4f12-9065-30ec4af1edf7
 md"""
 # Controle de drone 3DoF
@@ -162,6 +165,9 @@ linear_model = named_ss(ss(A, B, I, 0), :linear_model,
     u=[:lthrust, :rthrust],
     y=[:x, :y, :theta, :xdot, :ydot, :thetadot])
 
+# ╔═╡ 942f30bb-c2fe-4559-8bcf-f715a418819a
+controllability(linear_model)
+
 # ╔═╡ 056522ff-ab4e-40c3-8386-a24d84f6df38
 md"""
 ## Hardware Abstraction Layer
@@ -180,6 +186,13 @@ hal = named_ss(ss([
     1/2 -1/(bicopter.prop_dist*2)
     1/2 1/(bicopter.prop_dist*2)
 ]), :hal, u=[:F, :M], y=[:lthrust, :rthrust])
+
+# ╔═╡ 2e1f2626-6d27-465c-9869-5a0203ca6adc
+md"""
+testar:
+* controlador de velocidade com saturação
+* alocação de polos com estado completo + desacoplamento de modos
+"""
 
 # ╔═╡ 8d892186-6db1-405a-8f70-5c0e7af18e63
 md"""
@@ -311,19 +324,6 @@ stepinfo(theta_step_response)
 # ╔═╡ 95fc4d93-3e98-492a-948b-7589ad058080
 dcgain(angle_tracker[3, 2] |> sminreal)
 
-# ╔═╡ a6273a46-6618-4c29-bb83-dd095b995fd2
-md"""
-#### Magnitude do controle
-
-Possível outputar direto do angle_tracker?
-"""
-
-# ╔═╡ 412370d0-a31b-4ad3-8106-768b471f5265
-control_output = angle_feedback_matrix * angle_tracker[[:theta, :thetadot], :theta_ref] |> sminreal
-
-# ╔═╡ feb04639-cb30-4ddf-923e-fab01b609190
-step(control_output[:M, :theta_ref], 10) |> plot
-
 # ╔═╡ 1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 md"""
 # Ajuste de ganhos de x
@@ -367,13 +367,13 @@ md"""
 """
 
 # ╔═╡ c569a4cc-c02a-43b5-8286-fcba98d81609
-@bind w0divider Slider(5:50, show_value=true)
+@bind w0divider Slider(1:20, show_value=true)
 
 # ╔═╡ c38e43ed-cb92-4312-b340-4cf7dfb443e0
 xw0 = thetaw0 / w0divider
 
 # ╔═╡ a4097a3a-d5fa-4acc-a532-e2fabbfbc534
-xdelta = 0.8
+@bind xdelta Slider(0:0.01:1, show_value=true)
 
 # ╔═╡ 47bd9caf-5285-43ba-b1fb-0b917f5b7d76
 x_poles =
@@ -390,25 +390,13 @@ feedback(x_sys, xfeedback_matrix) |> poles
 
 # ╔═╡ 1b506afc-b6d0-4a99-bc86-f3447dcc2ba5
 md"""
-### System with x integral
+### System with x stabilization
 """
-
-# ╔═╡ f62f8abf-ab48-4154-8c71-4cd4bff0b161
-x_error = sumblock("xerror = x_ref - xfeedback")
-
-# ╔═╡ 029b17db-f8bb-4fb8-a44c-507bf5523fdb
-xfeedback_matrix
-
-# ╔═╡ 1fafa154-48fb-4458-b51a-15205a022947
-angle_tracker
 
 # ╔═╡ 91a518cd-95ed-4517-8eea-708aa99a5129
 stabilized_x_feedback = feedback(angle_tracker, xfeedback_matrix,
 	u1=[:theta_ref],
 	y1=[:x, :xdot])
-
-# ╔═╡ 9f81d3d7-a82d-416c-81ca-84f50710bb74
-poles(stabilized_x_feedback)
 
 # ╔═╡ 97300ca8-e59a-4084-8221-2d1def828eaf
 step(stabilized_x_feedback[:x, :theta_ref]) |> plot
@@ -427,16 +415,6 @@ poles(x_tracker)
 # ╔═╡ 504a3b88-7647-4015-a985-cf7776878a01
 plot(step(x_tracker[:x, :x_ref], 10))
 
-# ╔═╡ d49da2df-44b0-40fa-92c9-46468b573640
-md"""
-Dessa vez, vamos usar um controlador PID ao invés de PD, por maior generalidade. Na direção x, o termo integral não é extremamente necessário, mas na direção y sim (ver adiante).
-
-Não faz sentido alocar polos com PID por _motivos_. Então vamos ajustar os 3 ganhos manualmente, verificando o comportamento da resposta degrau e os polos do sistema. Dicas:
-* colocar um kp qualquer
-* ajustar kd até deixar o sistema estável
-* iterar sobre os ganhos até obter o tempo de resposta desejado.
-"""
-
 # ╔═╡ dba25d25-0df2-465a-bc41-9f1c150b26da
 md"""
 # Ajuste de ganhos em y
@@ -447,43 +425,36 @@ O comportamento esperado da resposta degrau na referência y é semelhante ao co
 
 """
 
-# ╔═╡ 7cc9f759-ccd6-4b54-8634-2592b132bbca
-error_integrator = named_ss(
-	ss([0], [1], I, 0),
-	u=[:error], x=[:errorint], y=[:errorint])
-
 # ╔═╡ 87d097ae-280b-4421-a7d5-7a8ebe43860a
 Fy_pert = sumblock("Fyperturbed = Fycommand + Fypert");
 
 # ╔═╡ 92e50e1b-cf8e-4a5e-a4f5-6e00bd525ea7
-y_sys = series(fxfy_to_ftheta_sys, angle_feedback)[[2, 5], 2] * Fy_pert;
+y_sys = series(fxfy_to_ftheta_sys, angle_tracker)[[2, 5], 2] * Fy_pert
 
 # ╔═╡ 4b086517-b877-4cf0-949f-3a2d954d40bb
-y_error = sumblock("y_error = y_ref - y");
-
-# ╔═╡ c44338f2-9e8a-4ca7-91cf-1a8b9d5080ac
-minus_ydot = sumblock("minus_ydot = - ydot");
+y_error = sumblock("y_error = y_ref - y")
 
 # ╔═╡ bf237ad2-0e22-40a6-8d59-84aebbbfde5a
-@bind kpy Slider(0:0.01:20, show_value=true)
+@bind kpy Slider(-20:0.01:20, show_value=true)
 
 # ╔═╡ 090a151c-5d2e-4384-847f-af7b42215f73
 @bind kiy Slider(0:0.01:5, show_value=true)
 
 # ╔═╡ e74f5d16-af79-4f71-8c3e-de241c812c3a
-@bind kdy Slider(0:0.01:10, show_value=true)
+@bind kdy Slider(-10:0.01:10, show_value=true)
 
 # ╔═╡ 2b8d0268-e566-4139-8b12-bc53ce4e5983
-ypid = pid_block(kiy, kpy, kdy, :y)
+ypid = named_ss(
+	ss([0], [1 0], [kiy], [kpy kdy]),
+	u=[:error, :dot], x=[:errorint], y=[:PID])
 
 # ╔═╡ e76284fa-44f1-4fb2-b674-cc29fbc2a7ef
-y_feedback_manual = connect([y_sys, ypid, y_error, minus_ydot],
+y_feedback_manual = connect([y_sys, ypid, y_error],
 [
 	:y => :y,
-	:ydot => :ydot,
-	:y_error => :y_error,
-	:minus_ydot => :minus_ydot,
-	:Fy => :Fycommand
+	:y_error => :error,
+	:ydot => :dot,
+	:PID => :Fycommand
 ], w1=[:y_ref, :Fypert], z1=[:y, :ydot])
 
 # ╔═╡ bcb9c5d3-d20d-4c8d-9463-168bb6a139a3
@@ -513,6 +484,7 @@ perturbed_position_control_layer = connect([position_control_layer, Fy_pert],
 open_loop = angle_feedback * fxfy_to_ftheta_sys * perturbed_position_control_layer;
 
 # ╔═╡ 0a326122-9ef8-4213-87bb-2a6a23435348
+#=╠═╡
 closed_loop = connect([open_loop, x_error, y_error, minus_xdot, minus_ydot],
 [
 	:x => :x,
@@ -524,6 +496,7 @@ closed_loop = connect([open_loop, x_error, y_error, minus_xdot, minus_ydot],
 	:ydot => :ydot,
 	:minus_ydot => :minus_ydot
 ], w1 = [:Fypert, :x_ref, :y_ref], z1=[linear_model.x...])
+  ╠═╡ =#
 
 # ╔═╡ 830a946d-a973-4f28-825a-a8b25721553d
 md"""
@@ -531,7 +504,9 @@ md"""
 """
 
 # ╔═╡ 2d81f724-c1d1-4ee0-87d6-5fad02c5b979
+#=╠═╡
 plot(step(closed_loop[3, 2], 10))
+  ╠═╡ =#
 
 # ╔═╡ 055a4c01-59fa-432e-b07a-fabc9249477f
 md"""
@@ -544,6 +519,7 @@ Os métodos de ajuste de ganhos que apresentei aqui são bastante úteis, apesar
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
@@ -552,6 +528,7 @@ RobustAndOptimalControl = "21fd56a4-db03-40ee-82ee-a87907bee541"
 
 [compat]
 ControlSystems = "~1.8.0"
+DifferentialEquations = "~7.11.0"
 ForwardDiff = "~0.10.36"
 Plots = "~1.39.0"
 PlutoUI = "~0.7.52"
@@ -564,7 +541,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "9ab1f06c8658ffe4fabf21bbdf81a727aefb3865"
+project_hash = "4a7c6c08b7d98f6f27de123c071908ea218db054"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -653,11 +630,28 @@ git-tree-sha1 = "0c5f81f47bbbcf4aea7b2959135713459170798b"
 uuid = "62783981-4cbd-42fc-bca8-16325de8dc4b"
 version = "0.1.5"
 
+[[deps.BoundaryValueDiffEq]]
+deps = ["ADTypes", "Adapt", "ArrayInterface", "ConcreteStructs", "DiffEqBase", "ForwardDiff", "LinearAlgebra", "NonlinearSolve", "PreallocationTools", "RecursiveArrayTools", "Reexport", "SciMLBase", "Setfield", "SparseArrays", "SparseDiffTools", "TruncatedStacktraces", "UnPack"]
+git-tree-sha1 = "147b2c17f3f42ce3de29f43283d301892969695d"
+uuid = "764a87c0-6b3e-53db-9096-fe964310641d"
+version = "5.0.0"
+
+    [deps.BoundaryValueDiffEq.extensions]
+    BoundaryValueDiffEqODEInterfaceExt = "ODEInterface"
+
+    [deps.BoundaryValueDiffEq.weakdeps]
+    ODEInterface = "54ca160b-1b9f-5127-a996-1867f4bc2a2c"
+
 [[deps.Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+0"
+
+[[deps.CEnum]]
+git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
+uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+version = "0.5.0"
 
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Static"]
@@ -889,10 +883,19 @@ deps = ["DataStructures", "DiffEqBase", "ForwardDiff", "Functors", "LinearAlgebr
 git-tree-sha1 = "acc53f895588767cbb296d3d8581ebd203524a2e"
 uuid = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 version = "2.33.0"
+weakdeps = ["OrdinaryDiffEq", "Sundials"]
 
-    [deps.DiffEqCallbacks.weakdeps]
-    OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
-    Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
+[[deps.DiffEqNoiseProcess]]
+deps = ["DiffEqBase", "Distributions", "GPUArraysCore", "LinearAlgebra", "Markdown", "Optim", "PoissonRandom", "QuadGK", "Random", "Random123", "RandomNumbers", "RecipesBase", "RecursiveArrayTools", "Requires", "ResettableStacks", "SciMLBase", "StaticArraysCore", "Statistics"]
+git-tree-sha1 = "ed0158e758723b4d429afbbb5d98c5afd3458dc1"
+uuid = "77a26b50-5914-5dd7-bc55-306e6241c503"
+version = "5.22.0"
+
+    [deps.DiffEqNoiseProcess.extensions]
+    DiffEqNoiseProcessReverseDiffExt = "ReverseDiff"
+
+    [deps.DiffEqNoiseProcess.weakdeps]
+    ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 
 [[deps.DiffResults]]
 deps = ["StaticArraysCore"]
@@ -905,6 +908,12 @@ deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialF
 git-tree-sha1 = "23163d55f885173722d1e4cf0f6110cdbaf7e272"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
 version = "1.15.1"
+
+[[deps.DifferentialEquations]]
+deps = ["BoundaryValueDiffEq", "DelayDiffEq", "DiffEqBase", "DiffEqCallbacks", "DiffEqNoiseProcess", "JumpProcesses", "LinearAlgebra", "LinearSolve", "NonlinearSolve", "OrdinaryDiffEq", "Random", "RecursiveArrayTools", "Reexport", "SciMLBase", "SteadyStateDiffEq", "StochasticDiffEq", "Sundials"]
+git-tree-sha1 = "19a5b6314715139ddefea4108a105bb9b90dc4fb"
+uuid = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+version = "7.11.0"
 
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
@@ -1289,6 +1298,16 @@ git-tree-sha1 = "6f2675ef130a300a112286de91973805fcc5ffbc"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "2.1.91+0"
 
+[[deps.JumpProcesses]]
+deps = ["ArrayInterface", "DataStructures", "DiffEqBase", "DocStringExtensions", "FunctionWrappers", "Graphs", "LinearAlgebra", "Markdown", "PoissonRandom", "Random", "RandomNumbers", "RecursiveArrayTools", "Reexport", "SciMLBase", "StaticArrays", "UnPack"]
+git-tree-sha1 = "c451feb97251965a9fe40bacd62551a72cc5902c"
+uuid = "ccbc3e58-028d-4f4c-8cd5-9ae44345cda5"
+version = "9.10.1"
+weakdeps = ["FastBroadcast"]
+
+    [deps.JumpProcesses.extensions]
+    JumpProcessFastBroadcastExt = "FastBroadcast"
+
 [[deps.KLU]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
 git-tree-sha1 = "884c2968c2e8e7e6bf5956af88cb46aa745c854b"
@@ -1359,6 +1378,12 @@ version = "0.15.1"
 [[deps.LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
 uuid = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+
+[[deps.LevyArea]]
+deps = ["LinearAlgebra", "Random", "SpecialFunctions"]
+git-tree-sha1 = "56513a09b8e0ae6485f34401ea9e2f31357958ec"
+uuid = "2d8b4e74-eb68-11e8-0fb9-d5eb67b50637"
+version = "1.0.0"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -1770,6 +1795,12 @@ git-tree-sha1 = "e47cd150dbe0443c3a3651bc5b9cbd5576ab75b7"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.52"
 
+[[deps.PoissonRandom]]
+deps = ["Random"]
+git-tree-sha1 = "a0f1159c33f846aa77c3f30ebbc69795e5327152"
+uuid = "e409e4f3-bfea-5376-8464-e040bb5c01ab"
+version = "0.4.4"
+
 [[deps.Polyester]]
 deps = ["ArrayInterface", "BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "ManualMemory", "PolyesterWeave", "Requires", "Static", "StaticArrayInterface", "StrideArraysCore", "ThreadingUtilities"]
 git-tree-sha1 = "c7dc9720390fcc296bf757b3f833f9e41c68a086"
@@ -1852,6 +1883,18 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
+[[deps.Random123]]
+deps = ["Random", "RandomNumbers"]
+git-tree-sha1 = "4743b43e5a9c4a2ede372de7061eed81795b12e7"
+uuid = "74087812-796a-5b5d-8853-05524746bad3"
+version = "1.7.0"
+
+[[deps.RandomNumbers]]
+deps = ["Random"]
+git-tree-sha1 = "c6ec94d2aaba1ab2ff983052cf6a606ca5985902"
+uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
+version = "1.6.0"
+
 [[deps.RecipesBase]]
 deps = ["PrecompileTools"]
 git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
@@ -1904,6 +1947,12 @@ deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
+
+[[deps.ResettableStacks]]
+deps = ["StaticArrays"]
+git-tree-sha1 = "256eeeec186fa7f26f2801732774ccf277f05db9"
+uuid = "ae5879a3-cd67-5da8-be7f-38c6eb64a37b"
+version = "1.1.1"
 
 [[deps.Rmath]]
 deps = ["Random", "Rmath_jll"]
@@ -2135,6 +2184,18 @@ version = "1.3.0"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 
+[[deps.SteadyStateDiffEq]]
+deps = ["DiffEqBase", "DiffEqCallbacks", "LinearAlgebra", "NLsolve", "Reexport", "SciMLBase"]
+git-tree-sha1 = "2ca69f4be3294e4cd987d83d6019037d420d9fc1"
+uuid = "9672c7b4-1e72-59bd-8a11-6ac3964bc41f"
+version = "1.16.1"
+
+[[deps.StochasticDiffEq]]
+deps = ["Adapt", "ArrayInterface", "DataStructures", "DiffEqBase", "DiffEqNoiseProcess", "DocStringExtensions", "FiniteDiff", "ForwardDiff", "JumpProcesses", "LevyArea", "LinearAlgebra", "Logging", "MuladdMacro", "NLsolve", "OrdinaryDiffEq", "Random", "RandomNumbers", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "SparseArrays", "SparseDiffTools", "StaticArrays", "UnPack"]
+git-tree-sha1 = "97e5d0b7e5ec2e68eec6626af97c59e9f6b6c3d0"
+uuid = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
+version = "6.65.1"
+
 [[deps.StrideArraysCore]]
 deps = ["ArrayInterface", "CloseOpenIntervals", "IfElse", "LayoutPointers", "ManualMemory", "SIMDTypes", "Static", "StaticArrayInterface", "ThreadingUtilities"]
 git-tree-sha1 = "f02eb61eb5c97b48c153861c72fbbfdddc607e06"
@@ -2149,6 +2210,18 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
 version = "5.10.1+6"
+
+[[deps.Sundials]]
+deps = ["CEnum", "DataStructures", "DiffEqBase", "Libdl", "LinearAlgebra", "Logging", "PrecompileTools", "Reexport", "SciMLBase", "SparseArrays", "Sundials_jll"]
+git-tree-sha1 = "f983e02a4a9a5dccf0b1acb64481b75f35dc9e53"
+uuid = "c3572dad-4567-51f8-b174-8c6c989267f4"
+version = "4.21.0"
+
+[[deps.Sundials_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS_jll", "Pkg", "SuiteSparse_jll"]
+git-tree-sha1 = "04777432d74ec5bc91ca047c9e0e0fd7f81acdb6"
+uuid = "fb77eaff-e24c-56d4-86b1-d163f2edb164"
+version = "5.2.1+0"
 
 [[deps.SymbolicIndexingInterface]]
 deps = ["DocStringExtensions"]
@@ -2582,6 +2655,7 @@ version = "1.4.1+1"
 # ╠═51437be2-e537-454a-bdb7-0671826f9647
 # ╠═80b49c17-ab35-4dd5-a461-a50a5bb61f59
 # ╠═fb324b41-d2f3-421d-b92c-543a89eb6ba7
+# ╠═540dc67f-52b5-49f5-bdda-021a8ace0e35
 # ╟─cded54bf-4f3c-4d83-8bf2-0447e26d0103
 # ╠═209fa89a-a09b-4479-aaa1-b11b551cf232
 # ╠═4b042d8e-8476-4cb0-bb3a-96d7ebe2667f
@@ -2597,8 +2671,10 @@ version = "1.4.1+1"
 # ╠═db9be502-f44f-455d-92c0-c68bd808795e
 # ╟─7e35058d-b47e-4b67-93b6-b936a08008a0
 # ╠═f74c28d9-647a-40f9-8ec5-e68182f365d2
+# ╠═942f30bb-c2fe-4559-8bcf-f715a418819a
 # ╟─056522ff-ab4e-40c3-8386-a24d84f6df38
 # ╠═a36681a0-484a-4afe-8dc2-7b28ab056013
+# ╠═2e1f2626-6d27-465c-9869-5a0203ca6adc
 # ╠═8d892186-6db1-405a-8f70-5c0e7af18e63
 # ╠═ad5f221f-0aaf-40be-b968-78a14b05e3ed
 # ╠═17fce8a9-ee42-42dd-b79a-aeaacbbeda62
@@ -2630,9 +2706,6 @@ version = "1.4.1+1"
 # ╠═346fd3aa-16cd-4a45-a310-18a83609e8a8
 # ╠═04d71145-c214-493d-a99c-6b1a7d56cd65
 # ╠═95fc4d93-3e98-492a-948b-7589ad058080
-# ╠═a6273a46-6618-4c29-bb83-dd095b995fd2
-# ╠═412370d0-a31b-4ad3-8106-768b471f5265
-# ╠═feb04639-cb30-4ddf-923e-fab01b609190
 # ╟─1a80c003-fed4-4cd8-9252-dfb09f5b5dcc
 # ╠═8d8c6806-c2b1-4d3c-8083-8f96a6e71d9b
 # ╠═10d208ca-e813-4ec4-b576-ac0cc931a69a
@@ -2646,28 +2719,21 @@ version = "1.4.1+1"
 # ╠═c38e43ed-cb92-4312-b340-4cf7dfb443e0
 # ╠═a4097a3a-d5fa-4acc-a532-e2fabbfbc534
 # ╠═47bd9caf-5285-43ba-b1fb-0b917f5b7d76
-# ╟─c19455a8-509a-43bc-a8c0-2b07de8515f8
+# ╠═c19455a8-509a-43bc-a8c0-2b07de8515f8
 # ╠═ae615665-7983-474c-8816-50f3add9f6d6
 # ╠═8cb028d0-5a47-4e04-adba-6bd47eea18a5
-# ╠═1b506afc-b6d0-4a99-bc86-f3447dcc2ba5
-# ╠═f62f8abf-ab48-4154-8c71-4cd4bff0b161
-# ╠═029b17db-f8bb-4fb8-a44c-507bf5523fdb
-# ╠═1fafa154-48fb-4458-b51a-15205a022947
-# ╠═91a518cd-95ed-4517-8eea-708aa99a5129
-# ╠═9f81d3d7-a82d-416c-81ca-84f50710bb74
 # ╠═97300ca8-e59a-4084-8221-2d1def828eaf
+# ╠═1b506afc-b6d0-4a99-bc86-f3447dcc2ba5
+# ╠═91a518cd-95ed-4517-8eea-708aa99a5129
 # ╠═fbdc668a-15fe-4dd6-95cc-2dae1da2307a
 # ╠═97aac666-0457-4728-9a68-11227efd255c
 # ╠═bdfb9680-fb6f-4aeb-813e-cb169505f5d1
 # ╠═504a3b88-7647-4015-a985-cf7776878a01
-# ╟─d49da2df-44b0-40fa-92c9-46468b573640
 # ╟─dba25d25-0df2-465a-bc41-9f1c150b26da
-# ╠═7cc9f759-ccd6-4b54-8634-2592b132bbca
 # ╠═87d097ae-280b-4421-a7d5-7a8ebe43860a
 # ╠═92e50e1b-cf8e-4a5e-a4f5-6e00bd525ea7
 # ╠═2b8d0268-e566-4139-8b12-bc53ce4e5983
 # ╠═4b086517-b877-4cf0-949f-3a2d954d40bb
-# ╠═c44338f2-9e8a-4ca7-91cf-1a8b9d5080ac
 # ╠═e76284fa-44f1-4fb2-b674-cc29fbc2a7ef
 # ╠═bf237ad2-0e22-40a6-8d59-84aebbbfde5a
 # ╠═090a151c-5d2e-4384-847f-af7b42215f73
